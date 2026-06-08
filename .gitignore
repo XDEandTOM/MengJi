@@ -11,3 +11,5 @@ server-go/meng-linux
 server-go/uploads/
 fix_chinese.py
 mobile-toolbar.png
+
+server-go/*.exe
