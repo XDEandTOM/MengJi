@@ -25,12 +25,12 @@ function onTagClick(tag: string) {
 
 <template>
   <v-text-field v-model="searchQuery" prepend-inner-icon="mdi-magnify"
-    label="��������..." variant="outlined" hide-details density="compact"
+    label="搜索备忘..." variant="outlined" hide-details density="compact"
     clearable class="mb-3 rounded-search" />
   <Heatmap class="mb-4" />
   <v-card variant="outlined" class="rounded-xl pa-4 side-card">
     <div class="d-flex align-center ga-2 mb-3">
-      <span class="text-subtitle-2 font-weight-medium">��ǩ</span>
+      <span class="text-subtitle-2 font-weight-medium">标签</span>
     </div>
     <div class="d-flex flex-wrap ga-1">
       <v-chip v-for="[tag, count] in allTags" :key="tag" size="x-small" class="tag-chip"
@@ -38,9 +38,8 @@ function onTagClick(tag: string) {
         :color="selectedTag === tag ? 'primary' : undefined"
         :variant="selectedTag === tag ? 'flat' : 'outlined'">
         #{{ tag }}
-        <template #append><span class="text-caption opacity-75">{{ count }}</span></template>
       </v-chip>
-      <div v-if="!allTags.length" class="text-caption text-medium-emphasis py-2">���ޱ�ǩ</div>
+      <div v-if="!allTags.length" class="text-caption text-medium-emphasis py-2">暂无标签</div>
     </div>
   </v-card>
 </template>

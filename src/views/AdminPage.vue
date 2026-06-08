@@ -245,26 +245,25 @@ function formatDate(ts: number) { return new Date(ts).toLocaleString("zh-CN") }
       <v-card variant="outlined" class="rounded-xl pa-6 mb-4 stat-card">
         <h3 class="text-subtitle-1 font-weight-medium mb-4">个人资料</h3>
         <div class="d-flex flex-column ga-4">
-          <div>
-            <div class="d-flex align-center ga-3 mb-2">
+          <div class="d-flex align-center justify-space-between">
+            <div class="d-flex align-center ga-3">
               <v-icon color="primary">mdi-account-edit</v-icon>
               <span class="text-body-2">昵称</span>
             </div>
-            <div class="d-flex align-center ga-2">
-              <v-text-field v-model="nickInput" variant="outlined" hide-details density="compact" placeholder="设置昵称" style="max-width:300px" @keyup.enter="saveNickname" />
+            <div class="d-flex align-center ga-2" style="flex:1;max-width:400px">
+              <v-text-field v-model="nickInput" variant="outlined" hide-details density="compact" placeholder="设置昵称" style="width:100%" @keyup.enter="saveNickname" />
               <v-btn size="small" variant="tonal" color="primary" @click="saveNickname">保存</v-btn>
             </div>
-            <div v-if="nickError" class="text-caption text-error mt-1">{{ nickError }}</div>
           </div>
+          <div v-if="nickError" class="text-caption text-error">{{ nickError }}</div>
           <v-divider />
-          <div>
-            <div class="d-flex align-center ga-3 mb-2">
+          <div class="d-flex align-center justify-space-between">
+            <div class="d-flex align-center ga-3">
               <v-icon color="primary">mdi-lock-reset</v-icon>
               <span class="text-body-2">修改密码</span>
             </div>
-            <div class="d-flex align-center ga-2 flex-wrap">
-              <v-text-field v-model="oldPwd" type="password" variant="outlined" hide-details density="compact" placeholder="旧密码" style="max-width:200px" />
-              <v-text-field v-model="newPwd" type="password" variant="outlined" hide-details density="compact" placeholder="新密码（至少4位）" style="max-width:220px" />
+            <div class="d-flex align-center ga-1" style="flex:1;max-width:400px"><v-text-field v-model="oldPwd" type="password" variant="outlined" hide-details density="compact" placeholder="旧密码" style="flex:1;min-width:120px" />
+              <v-text-field v-model="newPwd" type="password" variant="outlined" hide-details density="compact" placeholder="新密码（至少4位）" style="flex:1;min-width:120px" />
               <v-btn size="small" variant="tonal" color="primary" @click="savePassword">修改</v-btn>
             </div>
           </div>

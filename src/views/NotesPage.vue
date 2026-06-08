@@ -144,8 +144,7 @@ function handleEdit(memo: any) {
               @click="selectedTag = selectedTag === tag ? '' : tag"
               :color="selectedTag === tag ? 'primary' : undefined"
               :variant="selectedTag === tag ? 'flat' : 'outlined'">
-              {{ tag }}
-              <template #append><span class="text-caption opacity-75">{{ count }}</span></template>
+              #{{ tag }}
             </v-chip>
             <div v-if="!allTags.length" class="text-caption text-medium-emphasis py-2">暂无标签</div>
           </div>
@@ -169,7 +168,7 @@ function handleEdit(memo: any) {
               <v-chip v-for="[tag, count] in allTags" :key="tag" size="x-small" class="tag-chip"
                 @click="selectedTag = selectedTag === tag ? '' : tag; emit('close-heatmap')"
                 :color="selectedTag === tag ? 'primary' : undefined" :variant="selectedTag === tag ? 'flat' : 'outlined'">
-                {{ tag }}<template #append><span class="text-caption opacity-75">{{ count }}</span></template>
+                #{{ tag }}
               </v-chip>
               <div v-if="!allTags.length" class="text-caption text-medium-emphasis py-2">暂无标签</div>
             </div>
