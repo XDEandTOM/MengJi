@@ -4,8 +4,8 @@ import { useDisplay } from "vuetify"
 import { useAuthStore } from "@/stores/auth"
 import NotesPage from "@/views/NotesPage.vue"
 
-const AdminPage = defineAsyncComponent(() => import("@/views/AdminPage.vue"))
-const LoginDialog = defineAsyncComponent(() => import("@/components/LoginDialog.vue"))
+import AdminPage from "@/views/AdminPage.vue"
+import LoginDialog from "@/components/LoginDialog.vue"
 
 const { mobile } = useDisplay()
 const isMobile = mobile
