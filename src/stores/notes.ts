@@ -1,8 +1,10 @@
-﻿import { defineStore } from "pinia"
+import { defineStore } from "pinia"
 import { ref } from "vue"
 import { useAuthStore } from "@/stores/auth"
 
 const API = "/api"
+
+export interface NoteReaction { [emoji: string]: string[] }
 
 export interface Note {
   id: string
@@ -27,7 +29,7 @@ export const useNotesStore = defineStore("notes", () => {
   async function fetchNotes() {
     try {
       const res = await fetch(`${API}/notes`)
-      if (res.ok) { notes.value = await res.json(); loaded.value = true }
+      if (res.ok) { notes.value = await res.json(); notes.value = [...notes.value].sort((a, b) => { if (a.pinned !== b.pinned) return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0); return b.createdAt - a.createdAt; }); loaded.value = true }
     } catch { console.warn("Failed to fetch notes from server") }
   }
 
@@ -44,7 +46,7 @@ export const useNotesStore = defineStore("notes", () => {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(note),
       })
-      if (res.ok) notes.value.unshift(note)
+      if (res.ok) { notes.value.unshift(note); notes.value = [...notes.value].sort((a, b) => { if (a.pinned !== b.pinned) return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0); return b.updatedAt - a.updatedAt; }); }
     } catch { console.warn("Failed to create note") }
   }
 
@@ -61,9 +63,10 @@ export const useNotesStore = defineStore("notes", () => {
     } catch { console.warn("Failed to update note") }
   }
 
-  async function deleteNote(id: string) {
+  async function deleteNote(id: string, username?: string) {
     try {
-      const res = await fetch(`${API}/notes/${id}`, { method: "DELETE" })
+      const auth = useAuthStore()
+      const res = await fetch(`${API}/notes/${id}?username=${encodeURIComponent(username || auth.userName || "")}`, { method: "DELETE" })
       if (res.ok) notes.value = notes.value.filter(n => n.id !== id)
     } catch { console.warn("Failed to delete note") }
   }
@@ -73,11 +76,46 @@ export const useNotesStore = defineStore("notes", () => {
     if (!note) return
     try {
       const res = await fetch(`${API}/notes/${id}/pin`, { method: "PATCH" })
-      if (res.ok) note.pinned = !note.pinned
+      if (res.ok) { note.pinned = !note.pinned; notes.value = [...notes.value].sort((a, b) => { if (a.pinned !== b.pinned) return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0); return b.updatedAt - a.updatedAt; }); }
     } catch { console.warn("Failed to toggle pin") }
   }
 
-return { notes, loaded, fetchNotes, addNote, updateNote, deleteNote, togglePin }
+async function reactToNote(id: string, emoji: string, uid?: string) {
+  if (!uid) uid = useAuthStore().userName || ""
+  try {
+    const res = await fetch(`${API}/notes/${id}/react`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emoji, username: uid }),
+    })
+    if (res.ok) {
+      const note = notes.value.find(n => n.id === id)
+      if (note) {
+        if (!note.reactions) note.reactions = {}
+        if (!note.reactions[emoji]) note.reactions[emoji] = []
+        if (!note.reactions[emoji].includes(uid)) note.reactions[emoji].push(uid)
+      }
+    }
+  } catch { }
+}
+
+async function removeReaction(id: string, emoji: string, uid?: string) {
+  if (!uid) uid = useAuthStore().userName || ""
+  try {
+    const res = await fetch(`${API}/notes/${id}/react`, {
+      method: "DELETE", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emoji, username: uid }),
+    })
+    if (res.ok) {
+      const note = notes.value.find(n => n.id === id)
+      if (note && note.reactions && note.reactions[emoji]) {
+        note.reactions[emoji] = note.reactions[emoji].filter(u => u !== uid)
+        if (note.reactions[emoji].length === 0) delete note.reactions[emoji]
+      }
+    }
+  } catch { }
+}
+
+return { notes, loaded, fetchNotes, addNote, updateNote, deleteNote, togglePin, reactToNote, removeReaction }
 })
 
 

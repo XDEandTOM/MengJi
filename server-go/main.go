@@ -1,4 +1,4 @@
-Ôªøpackage main
+package main
 
 import (
 	"database/sql"
@@ -36,7 +36,7 @@ func main() {
 }
 
 func initDB() {
-	dbPath := "meng.db"
+	dbPath := "suisui.db"
 	_, err := os.Stat(dbPath)
 	os.MkdirAll("uploads", 0755)
 	db, err = sql.Open("sqlite", dbPath)
@@ -51,6 +51,7 @@ func initDB() {
 		`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`,
 	}
 	db.Exec("ALTER TABLE users ADD COLUMN theme_color TEXT DEFAULT '#1976D2'")
+  db.Exec("ALTER TABLE users ADD COLUMN app_icon TEXT DEFAULT ''")")
   for _, t := range tables {
 		if _, err := db.Exec(t); err != nil {
 			log.Fatal(err)
@@ -125,7 +126,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 		var storedPwd, role string
 		err := db.QueryRow("SELECT password, role FROM users WHERE username=?", body.Username).Scan(&storedPwd, &role)
 		if err != nil || !checkPassword(body.Password, storedPwd) {
-			errResp(w, "Áî®Êà∑ÂêçÊàñÂØÜÁ†ÅÈîôËØØ", 401)
+			errResp(w, "”√ªß√˚ªÚ√‹¬Î¥ÌŒÛ", 401)
 			return
 		}
 		var avatar, nickname string
@@ -137,19 +138,19 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 		var body struct{ Username, Password string }
 		json.NewDecoder(r.Body).Decode(&body)
 		if len(body.Username) < 2 || len(body.Password) < 4 {
-			errResp(w, "Áî®Êà∑ÂêçËá≥Â∞ë2‰∏™Â≠óÁ¨¶ÔºåÂØÜÁ†ÅËá≥Â∞ë4‰∏™", 400)
+			errResp(w, "”√ªß√˚÷¡…Ÿ2∏ˆ◊÷∑˚£¨√‹¬Î÷¡…Ÿ4∏ˆ", 400)
 			return
 		}
 		var allowReg string
 		db.QueryRow("SELECT value FROM settings WHERE key='allow_register'").Scan(&allowReg)
 		if allowReg == "false" {
-			errResp(w, "Ê≥®ÂÜåÂ∑≤ÂÖ≥Èó≠", 403)
+			errResp(w, "◊¢≤·“—πÿ±’", 403)
 			return
 		}
 		_, err := db.Exec("INSERT INTO users (username, password, role, created_at) VALUES (?, ?, ?, ?)",
 			body.Username, hashPassword(body.Password), "user", time.Now().UnixMilli())
 		if err != nil {
-			errResp(w, "Áî®Êà∑ÂêçÂ∑≤Â≠òÂú®", 409)
+			errResp(w, "”√ªß√˚“—¥Ê‘⁄", 409)
 			return
 		}
 		jsonResp(w, map[string]string{"username": body.Username, "role": "user"})
@@ -172,7 +173,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 		var count int
 		db.QueryRow("SELECT COUNT(*) FROM users WHERE nickname=? AND username!=?", body.Nickname, body.Username).Scan(&count)
 		if count > 0 {
-			errResp(w, "Áî®Êà∑ÂêçÂ∑≤Â≠òÂú®", 409)
+			errResp(w, "”√ªß√˚“—¥Ê‘⁄", 409)
 			return
 		}
 		db.Exec("UPDATE users SET nickname=? WHERE username=?", body.Nickname, body.Username)
@@ -181,7 +182,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 	case path == "/auth/app-icon" && r.Method == "PATCH":
 		var body struct{ Username, AppIcon string }
 		json.NewDecoder(r.Body).Decode(&body)
-		db.Exec("UPDATE users SET avatar=? WHERE username=?", body.AppIcon, body.Username)
+		db.Exec("UPDATE users SET app_icon=? WHERE username=?", body.AppIcon, body.Username)
 		jsonResp(w, map[string]string{"success": "ok"})
 
 	case path == "/auth/theme" && r.Method == "PATCH":
@@ -196,7 +197,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 		var storedPwd string
 		db.QueryRow("SELECT password FROM users WHERE username=?", body.Username).Scan(&storedPwd)
 		if !checkPassword(body.OldPassword, storedPwd) {
-			errResp(w, "Áî®Êà∑È™åËØÅÂ§±Ë¥•", 401)
+			errResp(w, "”√ªß—È÷§ ß∞‹", 401)
 			return
 		}
 		db.Exec("UPDATE users SET password=? WHERE username=?", hashPassword(body.NewPassword), body.Username)
@@ -205,7 +206,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 	case path == "/auth/avatar/upload" && r.Method == "POST":
 		file, header, err := r.FormFile("avatar")
 		if err != nil {
-			errResp(w, "Êñá‰ª∂ËØªÂèñÂ§±Ë¥•", 400)
+			errResp(w, "Œƒº˛∂¡»° ß∞‹", 400)
 			return
 		}
 		defer file.Close()
@@ -261,7 +262,7 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 	case strings.Contains(path, "/upload") && r.Method == "POST":
 		file, header, err := r.FormFile("image")
 		if err != nil {
-			errResp(w, "Êñá‰ª∂ËØªÂèñÂ§±Ë¥•", 400)
+			errResp(w, "Œƒº˛∂¡»° ß∞‹", 400)
 			return
 		}
 		defer file.Close()
@@ -336,7 +337,10 @@ func handleAdmin(w http.ResponseWriter, r *http.Request, path string) {
 
 	default:
 		parts := strings.Split(strings.TrimPrefix(path, "/admin/users/"), "/")
+		var callerRole string
+		db.QueryRow("SELECT role FROM users WHERE username=?", r.URL.Query().Get("admin")).Scan(&callerRole)
 		if len(parts) == 1 && r.Method == "DELETE" {
+			if callerRole != "admin" { errResp(w, "forbidden", 403); return }
 			var username string
 			db.QueryRow("SELECT username FROM users WHERE id=?", parts[0]).Scan(&username)
 			db.Exec("DELETE FROM notes WHERE username=?", username)

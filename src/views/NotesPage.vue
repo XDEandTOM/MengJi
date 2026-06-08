@@ -17,6 +17,7 @@ const searchQuery = ref("")
 const selectedTag = ref("")
 
 const siteIcp = ref("")
+const icpLink = "https://beian.miit.gov.cn/#/Integrated/index"
 onMounted(async () => { await store.fetchNotes(); await loadSiteIcp() })
 
 async function loadSiteIcp() {
@@ -32,7 +33,7 @@ async function loadSiteIcp() {
 const allTags = computed(() => {
   const tagCount = new Map()
   for (const n of store.notes) {
-    for (const t of n.tags) tagCount.set(t, (tagCount.get(t) || 0) + 1)
+    if (n.tags && Array.isArray(n.tags)) for (const t of n.tags) tagCount.set(t, (tagCount.get(t) || 0) + 1)
   }
   return [...tagCount.entries()].sort((a, b) => b[1] - a[1])
 })
@@ -41,9 +42,9 @@ const filteredNotes = computed(() => {
   let list = store.notes
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase()
-    list = list.filter(n => n.content.toLowerCase().includes(q) || n.tags.some(t => t.toLowerCase().includes(q)))
+    list = list.filter(n => n.content.toLowerCase().includes(q) || (n.tags && Array.isArray(n.tags) && n.tags.some(t => t.toLowerCase().includes(q))))
   }
-  if (selectedTag.value) list = list.filter(n => n.tags.includes(selectedTag.value))
+  if (selectedTag.value) list = list.filter(n => n.tags && Array.isArray(n.tags) && n.tags.includes(selectedTag.value))
   return list
 })
 
@@ -56,6 +57,53 @@ const inlineFileInput = ref<HTMLInputElement | null>(null)
 const uploadedImages = ref<string[]>([])
 const editingNoteId = ref("")
 const zoomedUpload = ref("")
+const showTrash = ref(false)
+const deletedNotes = ref([])
+
+function insertMd(b,f,fb) {
+  const el = document.querySelector(".inline-textarea")
+  if (!el) { inlineContent.value += fb; return }
+  const start = el.selectionStart, end = el.selectionEnd
+  const t = inlineContent.value, sel = t.substring(start, end)
+  inlineContent.value = t.slice(0,start) + b + (sel||fb) + f + t.slice(end)
+  nextTick(() => { el.focus(); el.selectionStart = el.selectionEnd = start + b.length + (sel||fb).length })
+}
+function insertBold() { insertMd("**","**","粗体") }
+function insertItalic() { insertMd("*","*","斜体") }
+function insertHeading() { insertMd("\n## ","","标题") }
+function insertCode() { insertMd("`","`","code") }
+function insertLink() { insertMd("[","](url)","链接文字") }
+function insertList() { insertMd("\n- ","","列表项") }
+function insertQuote() { insertMd("\n> ","","引用") }
+
+async function fetchDeletedNotes() {
+  try {
+    const res = await fetch(`/api/notes/trash?username=${auth.userName}`)
+    if (res.ok) {
+      const all = await res.json()
+      const hidden = JSON.parse(localStorage.getItem("suisui-hidden-trash") || "[]")
+      deletedNotes.value = all.filter((n: any) => !hidden.includes(n.id))
+    }
+  } catch { }
+}
+async function restoreNote(id) {
+  try {
+    const res = await fetch(`/api/notes/${id}/restore?username=${auth.userName}`,{method:"PATCH"})
+    if (res.ok) { deletedNotes.value = deletedNotes.value.filter(n=>n.id!==id); await store.fetchNotes() }
+  } catch { }
+}
+async function deleteForever(id: string) {
+  try {
+    const res = await fetch(`/api/notes/${id}/hard-delete?username=${auth.userName}`,{method:"DELETE"})
+    if (res.ok) {
+      deletedNotes.value = deletedNotes.value.filter(n => n.id !== id)
+      const hidden = JSON.parse(localStorage.getItem("suisui-hidden-trash") || "[]")
+      hidden.push(id)
+      localStorage.setItem("suisui-hidden-trash", JSON.stringify(hidden))
+    }
+  } catch { }
+}
+
 
 function onInlineKeydown(e: KeyboardEvent) {
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) submitInline()
@@ -142,7 +190,7 @@ function handleEdit(memo: any) {
           <div class="d-flex flex-wrap ga-1">
             <v-chip v-for="[tag, count] in allTags" :key="tag" size="x-small" class="tag-chip"
               @click="selectedTag = selectedTag === tag ? '' : tag"
-              :color="selectedTag === tag ? 'primary' : undefined"
+              color="primary"
               :variant="selectedTag === tag ? 'flat' : 'outlined'">
               #{{ tag }}
             </v-chip>
@@ -167,7 +215,7 @@ function handleEdit(memo: any) {
             <div class="d-flex flex-wrap ga-1">
               <v-chip v-for="[tag, count] in allTags" :key="tag" size="x-small" class="tag-chip"
                 @click="selectedTag = selectedTag === tag ? '' : tag; emit('close-heatmap')"
-                :color="selectedTag === tag ? 'primary' : undefined" :variant="selectedTag === tag ? 'flat' : 'outlined'">
+                color="primary" :variant="selectedTag === tag ? 'flat' : 'outlined'">
                 #{{ tag }}
               </v-chip>
               <div v-if="!allTags.length" class="text-caption text-medium-emphasis py-2">暂无标签</div>
@@ -176,8 +224,38 @@ function handleEdit(memo: any) {
         </v-card>
       </v-dialog>
 
+      <v-dialog v-model="showTrash" max-width="500" scrollable>
+        <v-card class="rounded-xl pa-4">
+          <div class="d-flex align-center mb-3">
+            <span class="text-subtitle-2 font-weight-medium">回收站</span>
+            <v-spacer />
+            <v-btn icon="mdi-close" size="x-small" variant="text" @click="showTrash = false" />
+          </div>
+          <div v-if="!deletedNotes.length" class="text-caption text-medium-emphasis py-4 text-center">回收站为空</div>
+          <div v-else class="d-flex flex-column ga-2">
+            <div v-for="note in deletedNotes" :key="note.id" class="d-flex align-center ga-2 pa-2"
+              style="border-bottom:1px solid rgba(var(--v-theme-on-surface),0.06)">
+              <div class="flex-grow-1 text-caption" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                {{ note.content?.replace(/!\[.*?\]\(.+?\)/g, "[图片]").substring(0, 60) }}
+              </div>
+              <v-btn icon="mdi-restore" size="x-small" variant="text" color="primary" @click="restoreNote(note.id)" title="恢复" />
+              <v-btn icon="mdi-delete-forever" size="x-small" variant="text" color="error" @click="deleteForever(note.id)" title="永久删除" />
+            </div>
+          </div>
+        </v-card>
+      </v-dialog>
+
       <div v-if="auth.isLoggedIn" class="inline-editor mb-4">
         <div class="editor-box">
+          <div class="md-toolbar">
+            <v-btn icon="mdi-format-bold" size="x-small" variant="text" class="tool-btn" @click="insertBold" title="粗体" />
+            <v-btn icon="mdi-format-italic" size="x-small" variant="text" class="tool-btn" @click="insertItalic" title="斜体" />
+            <v-btn icon="mdi-format-header-pound" size="x-small" variant="text" class="tool-btn" @click="insertHeading" title="标题" />
+            <v-btn icon="mdi-code-tags" size="x-small" variant="text" class="tool-btn" @click="insertCode" title="代码" />
+            <v-btn icon="mdi-link-variant" size="x-small" variant="text" class="tool-btn" @click="insertLink" title="链接" />
+            <v-btn icon="mdi-format-list-bulleted" size="x-small" variant="text" class="tool-btn" @click="insertList" title="列表" />
+            <v-btn icon="mdi-format-quote-open" size="x-small" variant="text" class="tool-btn" @click="insertQuote" title="引用" />
+          </div>
           <textarea ref="inlineTextarea" v-model="inlineContent" class="inline-textarea"
             placeholder="写点什么呢.." rows="1" @keydown="onInlineKeydown" @input="autoGrowTextarea"></textarea>
           <div v-if="uploadedImages.length" class="d-flex flex-wrap ga-2 pa-2 pt-0">
@@ -193,6 +271,8 @@ function handleEdit(memo: any) {
               <v-btn icon="mdi-image-plus" size="x-small" variant="text" class="tool-btn" :loading="inlineUploading" @click="triggerInlineUpload" />
               <input ref="inlineFileInput" type="file" accept="image/*" multiple hidden @change="onInlineUpload" />
               <v-btn :icon="showInlineTags ? 'mdi-tag-off' : 'mdi-tag-outline'" size="x-small" variant="text" class="tool-btn" @click="showInlineTags = !showInlineTags" />
+              <v-btn icon="mdi-delete-outline" size="x-small" variant="text" class="tool-btn"
+                @click="showTrash = !showTrash; if(showTrash) fetchDeletedNotes()" />
             </div>
             <v-btn color="primary" size="small" variant="flat" class="rounded-pill px-4 submit-btn" @click="submitInline">
               <v-icon start size="x-small">mdi-send</v-icon>{{ editingNoteId ? "更新" : "发布" }}
@@ -219,7 +299,7 @@ function handleEdit(memo: any) {
         </div>
             </template>
       <div v-if="siteIcp" class="text-center text-caption py-4 icp-text" style="opacity:0.6">
-        {{ siteIcp }}
+        <a :href="icpLink" target="_blank" rel="noopener" class="icp-link">{{ siteIcp }}</a>
       </div>
     </div>
   </div>
@@ -244,6 +324,8 @@ function handleEdit(memo: any) {
 .tag-chip:hover { opacity: 0.9; }
 .rounded-search :deep(.v-field) { border-radius: 12px !important; }
 .heatmap-dialog-card { border-color: #424242 !important; }
+.icp-link { color: inherit; text-decoration: none; }
+.icp-link:hover { text-decoration: underline; }
 
 .inline-editor { width: 100%; }
 .editor-box {
@@ -270,6 +352,13 @@ function handleEdit(memo: any) {
 .tool-btn { opacity: 0.5; transition: opacity 0.2s; }
 .tool-btn:hover { opacity: 1; }
 .submit-btn { height: 30px; }
+.md-toolbar {
+  display: flex; align-items: center; gap: 0;
+  padding: 4px 8px 0;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+.md-toolbar .tool-btn { width: 28px; height: 28px; opacity: 0.5; }
+.md-toolbar .tool-btn:hover { opacity: 1; }
 .search-border :deep(.v-field) { border-color: #424242 !important; }
 .side-card { border-color: #424242 !important; }
 

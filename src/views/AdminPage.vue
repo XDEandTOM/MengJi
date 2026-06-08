@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, onMounted, watch } from "vue"
 import { useAuthStore } from "@/stores/auth"
 import AvatarPicker from "@/components/AvatarPicker.vue"
@@ -70,7 +70,7 @@ async function loadSettings() {
       const s = await r.json()
       siteTitle.value = s.site_title || ""
       siteIcp.value = s.site_icp || ""
-      document.title = s.site_title || "Mengji"
+      document.title = s.site_title || "碎碎"
       allowRegister.value = s.allow_register !== "false"
     }
   } catch {}
@@ -86,7 +86,7 @@ async function saveSiteTitle() {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key: "site_title", value: siteTitle.value.trim() })
     })
-    document.title = siteTitle.value.trim() || "Mengji"
+    document.title = siteTitle.value.trim() || "碎碎"
     snackMsg.value = "网站标题已保存"; snackbar.value = true; showTitleDialog.value = false
   } catch {}
 }
@@ -309,7 +309,7 @@ function formatDate(ts: number) { return new Date(ts).toLocaleString("zh-CN") }
       </v-card>
       <AvatarPicker v-model="showAvatarPicker" />
     </template>
-    <div class="text-center text-caption text-medium-emphasis pt-4">v1.0.0</div>
+    <div class="text-center text-caption text-medium-emphasis pt-4">v1.1.0</div>
   <!-- Nickname Dialog -->
     <v-dialog v-model="showNickDialog" max-width="400">
       <v-card class="rounded-xl pa-4">

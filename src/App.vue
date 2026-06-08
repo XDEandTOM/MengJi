@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, onMounted, watch } from "vue"
 import { useDisplay, useTheme } from "vuetify"
 import { useAuthStore } from "@/stores/auth"
@@ -6,6 +6,7 @@ import NotesPage from "@/views/NotesPage.vue"
 
 import AdminPage from "@/views/AdminPage.vue"
 import LoginDialog from "@/components/LoginDialog.vue"
+import AppLogo from "@/components/AppLogo.vue"
 
 const { mobile } = useDisplay()
 const isMobile = mobile
@@ -60,7 +61,7 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
           <v-img :src="auth.userAppIcon" width="28" height="28" class="sidebar-icon-img" />
         </template>
         <template v-else>
-          <v-icon size="28" color="primary" class="mb-4">mdi-pencil-box-multiple</v-icon>
+          <AppLogo :size="28" />
         </template>
       </div>
       <div class="sidebar-middle" />
@@ -84,7 +85,7 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
           <v-img :src="auth.userAppIcon" width="22" height="22" class="mobile-bar-icon" />
         </template>
         <template v-else>
-          <v-icon size="22" color="primary">mdi-pencil-box-multiple</v-icon>
+          <AppLogo :size="22" />
         </template>
         <v-spacer />
         <v-btn icon="mdi-theme-light-dark" variant="text" size="small" class="mobile-bar-btn" @click.stop="$vuetify.theme.cycle()" />

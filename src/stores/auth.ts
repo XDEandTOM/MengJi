@@ -1,11 +1,11 @@
-ï»¿import { ref, computed } from "vue"
+import { ref, computed } from "vue"
 import { defineStore } from "pinia"
 
 const API = "/api"
-const AUTH_KEY = "mengji-auth"
-const USER_KEY = "mengji-user"
-const AVATAR_KEY = "mengji-avatar"
-const NICK_KEY = "mengji-nick"
+const AUTH_KEY = "suisui-auth"
+const USER_KEY = "suisui-user"
+const AVATAR_KEY = "suisui-avatar"
+const NICK_KEY = "suisui-nick"
 
 function clearStorage() {
   ;[AUTH_KEY, USER_KEY, AVATAR_KEY, NICK_KEY].forEach(k => localStorage.removeItem(k))
@@ -78,8 +78,8 @@ const userRole = ref("user")
         localStorage.setItem(NICK_KEY, data.nickname)
         return null
       }
-      return data.error || "ä¿å­˜å¤±è´¥"
-    } catch { return "æ— æ³•è¿æ¥æœåŠ¡å™¨" }
+      return data.error || "±£´æÊ§°Ü"
+    } catch { return "ÎŞ·¨Á¬½Ó·şÎñÆ÷" }
   }
 
   async function updateThemeColor(color: string) {
@@ -120,7 +120,7 @@ const userRole = ref("user")
       userAvatar.value = ""; userNickname.value = ""; userAppIcon.value = ""; userRole.value = data.role || "user"
       userThemeColor.value = "#1976D2"
       return null
-    } catch { return "æ— æ³•è¿æ¥æœåŠ¡å™¨" }
+    } catch { return "ÎŞ·¨Á¬½Ó·şÎñÆ÷" }
   }
 
   async function login(username: string, password: string) {
@@ -142,7 +142,7 @@ const userRole = ref("user")
       userRole.value = data.role || "user"
       userThemeColor.value = data.theme_color || "#1976D2"
       return null
-    } catch { return "æ— æ³•è¿æ¥æœåŠ¡å™¨" }
+    } catch { return "ÎŞ·¨Á¬½Ó·şÎñÆ÷" }
   }
 
   function logout() {

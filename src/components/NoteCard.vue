@@ -2,11 +2,14 @@
 import { ref, onMounted, nextTick } from "vue"
 import type { Note } from "@/stores/notes"
 import { useNotesStore } from "@/stores/notes"
+import { useAuthStore } from "@/stores/auth"
 import MarkdownPreview from "./MarkdownPreview.vue"
+import emojiRaw from "emojibase-data/zh/compact.json"
 
 const props = defineProps<{ memo: Note; loggedIn: boolean }>()
 const emit = defineEmits<{ edit: [memo: Note] }>()
 const store = useNotesStore()
+const auth = useAuthStore()
 
 const expanded = ref(false)
 const contentRef = ref<HTMLElement | null>(null)
@@ -25,6 +28,36 @@ function isImage(val?: string) {
 
 function displayName(memo: Note) {
   return memo.nickname?.trim() || memo.username || "匿名"
+}
+
+const showEmojiPicker = ref(false)
+
+function getReactionUserId() {
+  if (auth.isLoggedIn && auth.userName) return auth.userName
+  let gid = localStorage.getItem("suisui-guest")
+  if (!gid) { gid = "guest_" + Date.now().toString(36) + Math.random().toString(36).slice(2,6); localStorage.setItem("suisui-guest", gid) }
+  return gid
+}
+const groupLabels: Record<number, string> = { 0: "😊", 1: "🤝", 3: "🐻", 4: "🍔", 5: "🏠", 6: "⚽", 7: "💡", 8: "❤️", 9: "🚩" }
+
+const EMOJI_CATEGORIES = (() => {
+  const cats = [0,1,3,4,5,6,7,8,9].map(g => ({ id: g, icon: groupLabels[g] || "?", list: [] as string[] }))
+  for (const e of (emojiRaw as any[])) {
+    if (e.group === undefined || e.group === 2) continue
+    const cat = cats.find(c => c.id === e.group)
+    if (cat && e.unicode) cat.list.push(e.unicode)
+  }
+  return cats
+})()
+const activeEmojiCat = ref(0)
+
+function hasReacted(emoji: string) {
+  return props.memo.reactions?.[emoji]?.includes(getReactionUserId())
+}
+
+function toggleReaction(emoji: string) {
+  if (hasReacted(emoji)) store.removeReaction(props.memo.id, emoji, getReactionUserId())
+  else store.reactToNote(props.memo.id, emoji, getReactionUserId())
 }
 
 function timeAgo(ts: number) {
@@ -58,13 +91,13 @@ function timeAgo(ts: number) {
           </div>
           <div class="time">{{ timeAgo(memo.createdAt) }}</div>
         </div>
-        <div v-if="loggedIn" class="d-flex ga-1 flex-shrink-0" style="margin-top:2px">
+        <div v-if="loggedIn && (auth.isAdmin || memo.username === auth.userName)" class="d-flex ga-1 flex-shrink-0" style="margin-top:2px">
           <v-btn icon="mdi-pencil" size="x-small" variant="text" class="action-btn" @click="emit('edit', memo)" />
           <v-btn icon="mdi-pin-outline" size="x-small" variant="text"
             :color="memo.pinned ? 'primary' : undefined" class="action-btn"
             @click="store.togglePin(memo.id)" />
           <v-btn icon="mdi-delete" size="x-small" variant="text" color="error" class="action-btn"
-            @click="store.deleteNote(memo.id)" />
+            @click="store.deleteNote(memo.id, auth.userName)" />
         </div>
       </div>
       <div ref="contentRef" class="memo-content" :class="{ collapsed: !expanded && isOverflow }">
@@ -80,7 +113,34 @@ function timeAgo(ts: number) {
         <v-chip v-for="tag in memo.tags" :key="tag" size="x-small" variant="tonal"
           color="primary" class="tag-chip-card">#{{ tag }}</v-chip>
       </div>
-    </div>
+    
+      <div class="reactions-row">
+        <template v-for="(users, emoji) in memo.reactions" :key="emoji">
+          <v-chip v-if="users && users.length" size="x-small" variant="tonal"
+            :class="['reaction-chip', { active: hasReacted(emoji) }]"
+            @click="toggleReaction(emoji)">
+            {{ emoji }} {{ users.length }}
+          </v-chip>
+        </template>
+        <v-menu v-model="showEmojiPicker" :close-on-content-click="false" location="top">
+          <template v-slot:activator="{ props }">
+            <v-btn icon="mdi-plus-circle-outline" size="x-small" variant="text"
+              class="reaction-add-btn" v-bind="props" />
+          </template>
+          <div class="emoji-picker" style="width:280px">
+            <div class="d-flex ga-1 pa-2" style="border-bottom:1px solid rgba(var(--v-theme-on-surface),0.08);overflow-x:auto">
+              <v-btn v-for="cat in EMOJI_CATEGORIES" :key="cat.id" size="x-small" variant="text"
+                :class="['cat-btn', { active: activeEmojiCat === cat.id }]"
+                @click="activeEmojiCat = cat.id">{{ cat.icon }}</v-btn>
+            </div>
+            <div class="emoji-grid pa-2">
+              <v-btn v-for="e in EMOJI_CATEGORIES.find(c => c.id === activeEmojiCat)?.list || []" :key="e"
+                size="x-small" variant="text" class="emoji-btn"
+                @click="toggleReaction(e); showEmojiPicker = false">{{ e }}</v-btn>
+            </div>
+          </div>
+        </v-menu>
+      </div></div>
   </v-card>
 </template>
 
@@ -116,6 +176,17 @@ function timeAgo(ts: number) {
 .memo-card:hover .action-btn { opacity: 1; }
 .tags-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .tag-chip-card { font-size: 0.7rem; height: 22px !important; }
+.reactions-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 8px; }
+.reaction-chip { font-size: 0.75rem; height: 26px !important; cursor: pointer; }
+.reaction-chip.active { outline: 1px solid rgb(var(--v-theme-primary)); }
+.reaction-add-btn { opacity: 0.4; }
+.reaction-add-btn:hover { opacity: 1; }
+.emoji-picker { background: rgb(var(--v-theme-surface)); border: 1px solid rgba(var(--v-theme-on-surface),0.12); border-radius: 12px; overflow: hidden; }
+.emoji-btn { font-size: 1.1rem; width: 32px; height: 32px; min-width: 0 !important; padding: 0 !important; }
+.cat-btn { font-size: 1rem; width: 28px; height: 28px; min-width: 0 !important; border-radius: 8px; opacity:0.5; transition:all 0.15s; }
+.cat-btn:hover { opacity:1; }
+.cat-btn.active { opacity:1; background: rgba(var(--v-theme-primary),0.1); }
+.emoji-grid { display: grid; grid-template-columns: repeat(7, 32px); gap: 4px; max-height: 280px; overflow-y: auto; }
 
 .memo-content.collapsed {
   max-height: 300px;

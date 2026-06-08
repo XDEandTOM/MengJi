@@ -103,7 +103,7 @@ function formatTooltip(day: number, count: number) {
 .cal-grid { display: flex; flex-direction: column; gap: 2px; }
 .cal-row { display: flex; gap: 2px; }
 .cal-cell {
-  flex: 1; aspect-ratio: 1; max-width: 40px;
+  flex: 1 1 0%; aspect-ratio: 1; max-width: 40px;
   display: flex; align-items: center; justify-content: center;
   border-radius: 6px; font-size: 0.75rem; font-weight: 500;
 }
@@ -120,6 +120,6 @@ function formatTooltip(day: number, count: number) {
 
 @media (max-width: 768px) {
   .heatmap-card { padding: 8px !important; }
-  .cal-cell { flex: 1; aspect-ratio: 1; font-size: 0.6rem; min-width: 0; }
+  .cal-cell { flex: 1 1 0%; aspect-ratio: 1; font-size: 0.6rem; min-width: 0; max-width: none; }
 }
 </style>

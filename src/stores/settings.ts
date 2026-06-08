@@ -32,7 +32,7 @@ export const useSettingsStore = defineStore("settings", () => {
   }
 
   function applyTitle() {
-    document.title = siteTitle.value || "Mengji"
+    document.title = siteTitle.value || "ห้ห้"
     if (siteFavicon.value) {
       const link = document.querySelector("link[rel=\"icon\"]") || document.createElement("link")
       link.setAttribute("rel", "icon")
