@@ -5,3 +5,9 @@ dist/
 *.db-wal
 *.db-shm
 server-go/server.exe
+server-go/meng.exe
+server-go/meng.exe~
+server-go/meng-linux
+server-go/uploads/
+fix_chinese.py
+mobile-toolbar.png
