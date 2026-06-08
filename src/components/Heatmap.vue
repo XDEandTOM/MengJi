@@ -1,4 +1,4 @@
-ï»¿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed } from "vue"
 import { useNotesStore } from '@/stores/notes'
 
@@ -7,7 +7,7 @@ const store = useNotesStore()
 const currentYear = ref(new Date().getFullYear())
 const currentMonth = ref(new Date().getMonth())
 
-const dayHeaders = ["æ—¥", "ä¸€", "äºŒ", "ä¸‰", "å››", "äº”", "å…­"]
+const dayHeaders = ["ÈÕ", "Ò»", "¶ş", "Èı", "ËÄ", "Îå", "Áù"]
 
 function prevMonth() {
   if (currentMonth.value === 0) { currentMonth.value = 11; currentYear.value-- }
@@ -19,7 +19,7 @@ function nextMonth() {
   else { currentMonth.value++ }
 }
 
-const monthLabel = computed(() => currentYear.value + "å¹´" + (currentMonth.value + 1) + "æœˆ")
+const monthLabel = computed(() => currentYear.value + "Äê" + (currentMonth.value + 1) + "ÔÂ")
 
 const days = computed(() => {
   const year = currentYear.value, month = currentMonth.value
@@ -63,7 +63,7 @@ const hasTodayInMonth = computed(() => {
 
 function formatTooltip(day: number, count: number) {
   const d = currentYear.value + "-" + String(currentMonth.value + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0")
-  return d + ": " + count + " æ¡å¤‡å¿˜"
+  return d + ": " + count + " Ìõ±¸Íü"
 }
 </script>
 
@@ -99,7 +99,7 @@ function formatTooltip(day: number, count: number) {
 </template>
 
 <style scoped>
-.heatmap-card { border: 1px solid rgba(var(--v-theme-on-surface), 0.08); }
+.heatmap-card { border: 1px solid rgba(var(--v-theme-on-surface), 0.12); }
 .cal-grid { display: flex; flex-direction: column; gap: 2px; }
 .cal-row { display: flex; gap: 2px; }
 .cal-cell {
@@ -123,3 +123,4 @@ function formatTooltip(day: number, count: number) {
   .cal-cell { flex: 1; aspect-ratio: 1; font-size: 0.6rem; min-width: 0; }
 }
 </style>
+
