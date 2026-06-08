@@ -3,6 +3,8 @@ import "@mdi/font/css/materialdesignicons.css"
 import "vuetify/styles"
 
 export default createVuetify({
+  theme: { defaultTheme: "system" },
   display: {
     mobileBreakpoint: 768
-  }, theme: { defaultTheme: "system" } })
+  }
+})

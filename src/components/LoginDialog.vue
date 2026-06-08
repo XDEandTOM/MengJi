@@ -1,8 +1,10 @@
 ﻿<script setup lang="ts">
 import { ref, watch, nextTick } from "vue"
 import { useAuthStore } from "@/stores/auth"
+import { useSettingsStore } from "@/stores/settings"
 
 const auth = useAuthStore()
+const settings = useSettingsStore()
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ "update:modelValue": [value: boolean] }>()
 
@@ -17,10 +19,7 @@ const allowRegister = ref(true)
 watch(() => props.modelValue, async (val) => {
   if (val) {
     isRegister.value = false
-    try {
-      const r = await fetch("/api/settings")
-      if (r.ok) { const s = await r.json(); allowRegister.value = s.allow_register !== "false" }
-    } catch { /* ignore */ }
+    allowRegister.value = settings.allowRegister
   }
 }, { immediate: true })
 
@@ -70,11 +69,11 @@ function resetForm() {
           </v-text-field>
           <v-text-field v-if="isRegister" v-model="loginConfirm" :type="showPwd ? 'text' : 'password'" label="确认密码" variant="outlined" density="comfortable" hide-details class="mb-3" prepend-inner-icon="mdi-lock-outline" />
           <v-btn type="submit" color="primary" variant="flat" size="large" block class="rounded-pill mt-2"
-            :disabled="isRegister && !settings.allowRegister">{{ isRegister && !allowRegister ? '注册已关闭' : (isRegister ? '注册并登录' : '登录') }}</v-btn>
+            :disabled="isRegister && !allowRegister">{{ isRegister && !allowRegister ? '注册已关闭' : (isRegister ? '注册并登录' : '登录') }}</v-btn>
         </v-form>
       </v-card-text>
       <v-card-actions class="pa-4 pt-0 d-flex justify-center">
-        <v-btn v-if="settings.allowRegister" variant="text" size="small" class="text-caption text-medium-emphasis"
+        <v-btn v-if="allowRegister" variant="text" size="small" class="text-caption text-medium-emphasis"
           @click.stop="isRegister = !isRegister; loginError = ''">{{ isRegister ? '已有账号？去登录' : '没有账号？去注册' }}</v-btn>
       </v-card-actions>
     </v-card>
