@@ -51,7 +51,7 @@ func initDB() {
 		`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`,
 	}
 	db.Exec("ALTER TABLE users ADD COLUMN theme_color TEXT DEFAULT '#1976D2'")
-  db.Exec("ALTER TABLE users ADD COLUMN app_icon TEXT DEFAULT ''")")
+  db.Exec("ALTER TABLE users ADD COLUMN app_icon TEXT DEFAULT ''")
   for _, t := range tables {
 		if _, err := db.Exec(t); err != nil {
 			log.Fatal(err)
@@ -126,7 +126,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 		var storedPwd, role string
 		err := db.QueryRow("SELECT password, role FROM users WHERE username=?", body.Username).Scan(&storedPwd, &role)
 		if err != nil || !checkPassword(body.Password, storedPwd) {
-			errResp(w, "ÓÃ»§Ãû»òÃÜÂë´íÎó", 401)
+			errResp(w, "ç”¨æˆ·åæˆ–å¯†ç é”™è¯¯", 401)
 			return
 		}
 		var avatar, nickname string
@@ -138,19 +138,19 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 		var body struct{ Username, Password string }
 		json.NewDecoder(r.Body).Decode(&body)
 		if len(body.Username) < 2 || len(body.Password) < 4 {
-			errResp(w, "ÓÃ»§ÃûÖÁÉÙ2¸ö×Ö·û£¬ÃÜÂëÖÁÉÙ4¸ö", 400)
+			errResp(w, "ç”¨æˆ·åè‡³å°‘2ä¸ªå­—ç¬¦ï¼Œå¯†ç è‡³å°‘4ä¸ªå­—ç¬¦", 400)
 			return
 		}
 		var allowReg string
 		db.QueryRow("SELECT value FROM settings WHERE key='allow_register'").Scan(&allowReg)
 		if allowReg == "false" {
-			errResp(w, "×¢²áÒÑ¹Ø±Õ", 403)
+			errResp(w, "æ³¨å†Œå·²å…³é—­", 403)
 			return
 		}
 		_, err := db.Exec("INSERT INTO users (username, password, role, created_at) VALUES (?, ?, ?, ?)",
 			body.Username, hashPassword(body.Password), "user", time.Now().UnixMilli())
 		if err != nil {
-			errResp(w, "ÓÃ»§ÃûÒÑ´æÔÚ", 409)
+			errResp(w, "ç”¨æˆ·å·²å­˜åœ¨", 409)
 			return
 		}
 		jsonResp(w, map[string]string{"username": body.Username, "role": "user"})
@@ -173,7 +173,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 		var count int
 		db.QueryRow("SELECT COUNT(*) FROM users WHERE nickname=? AND username!=?", body.Nickname, body.Username).Scan(&count)
 		if count > 0 {
-			errResp(w, "ÓÃ»§ÃûÒÑ´æÔÚ", 409)
+			errResp(w, "æ˜µç§°å·²å­˜åœ¨", 409)
 			return
 		}
 		db.Exec("UPDATE users SET nickname=? WHERE username=?", body.Nickname, body.Username)
@@ -197,7 +197,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 		var storedPwd string
 		db.QueryRow("SELECT password FROM users WHERE username=?", body.Username).Scan(&storedPwd)
 		if !checkPassword(body.OldPassword, storedPwd) {
-			errResp(w, "ÓÃ»§ÑéÖ¤Ê§°Ü", 401)
+			errResp(w, "å¯†ç éªŒè¯å¤±è´¥", 401)
 			return
 		}
 		db.Exec("UPDATE users SET password=? WHERE username=?", hashPassword(body.NewPassword), body.Username)
@@ -206,7 +206,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 	case path == "/auth/avatar/upload" && r.Method == "POST":
 		file, header, err := r.FormFile("avatar")
 		if err != nil {
-			errResp(w, "ÎÄ¼ş¶ÁÈ¡Ê§°Ü", 400)
+			errResp(w, "æ–‡ä»¶è¯»å–å¤±è´¥", 400)
 			return
 		}
 		defer file.Close()
@@ -262,7 +262,7 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 	case strings.Contains(path, "/upload") && r.Method == "POST":
 		file, header, err := r.FormFile("image")
 		if err != nil {
-			errResp(w, "ÎÄ¼ş¶ÁÈ¡Ê§°Ü", 400)
+			errResp(w, "æ–‡ä»¶è¯»å–å¤±è´¥", 400)
 			return
 		}
 		defer file.Close()
