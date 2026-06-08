@@ -2,6 +2,7 @@
 
 on:
   push:
+    branches: [main]
     tags:
       - "v*"
 
@@ -22,22 +23,25 @@ jobs:
         with:
           go-version: "1.22"
 
+      - name: Install dependencies
+        run: npm install
+
       - name: Build frontend
-        run: |
-          npm install
-          npm run build
-          cp -r dist server-go/
+        run: npm run build
+
+      - name: Copy frontend to server
+        run: cp -r dist server-go/
 
       - name: Build Go binaries
         run: |
           cd server-go
-          GOOS=linux GOARCH=amd64 go build -o mengji-linux-amd64 .
-          GOOS=linux GOARCH=arm64 go build -o mengji-linux-arm64 .
-          GOOS=darwin GOARCH=amd64 go build -o mengji-darwin-amd64 .
-          GOOS=darwin GOARCH=arm64 go build -o mengji-darwin-arm64 .
-          GOOS=windows GOARCH=amd64 go build -o mengji-windows-amd64.exe .
+          GOOS=linux GOARCH=amd64 go build -o suisui-linux-amd64 .
+          GOOS=linux GOARCH=arm64 go build -o suisui-linux-arm64 .
+          GOOS=darwin GOARCH=amd64 go build -o suisui-darwin-amd64 .
+          GOOS=darwin GOARCH=arm64 go build -o suisui-darwin-arm64 .
+          GOOS=windows GOARCH=amd64 go build -o suisui-windows-amd64.exe .
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: server-go/mengji-*
+          files: server-go/suisui-*
