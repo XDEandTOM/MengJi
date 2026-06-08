@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Build frontend
+        run: |
+          npm install
+          npm run build
+          cp -r dist server-go/
+
+      - name: Build Go binaries
+        run: |
+          cd server-go
+          GOOS=linux GOARCH=amd64 go build -o mengji-linux-amd64 .
+          GOOS=linux GOARCH=arm64 go build -o mengji-linux-arm64 .
+          GOOS=darwin GOARCH=amd64 go build -o mengji-darwin-amd64 .
+          GOOS=darwin GOARCH=arm64 go build -o mengji-darwin-arm64 .
+          GOOS=windows GOARCH=amd64 go build -o mengji-windows-amd64.exe .
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: server-go/mengji-*
