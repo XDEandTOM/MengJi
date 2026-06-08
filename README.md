@@ -1,4 +1,4 @@
-﻿# MengJi
+# MengJi
 
 一个轻量级备忘录应用，支持 Markdown、标签、图片上传、热力图、暗色模式等特性。
 
@@ -29,7 +29,7 @@
 
 ### 开发模式
 
-`ash
+```bash
 # 1. 安装前端依赖
 npm install
 
@@ -40,13 +40,13 @@ go run main.go
 # 3. 启动 Vite 开发服务器（端口 5173，自动代理 /api 到后端）
 cd ..
 npx vite --port 5173 --host
-`
+```
 
 打开 http://localhost:5173
 
 ### 生产构建
 
-`ash
+```bash
 # 构建前端
 npm run build
 
@@ -56,37 +56,38 @@ go build -o mengji .
 
 # 运行
 ./mengji
+
 # 或指定端口
 ./mengji -port 8080
-`
+```
 
-默认管理员：dmin / admin
+默认管理员：`admin / admin`
 
 ## 项目结构
 
-`
-├── src/
-│   ├── components/     # 组件
-│   │   ├── NoteCard.vue       # 备忘录卡片
-│   │   ├── MarkdownPreview.vue # Markdown 渲染
-│   │   ├── Heatmap.vue        # 活动热力图
-│   │   ├── LoginDialog.vue    # 登录/注册弹窗
-│   │   ├── AppIconPicker.vue  # 工具栏图标选择
-│   │   ├── AvatarPicker.vue   # 头像选择
-│   │   └── FaviconPicker.vue  # 网站图标选择
-│   ├── views/
-│   │   ├── NotesPage.vue      # 主页面（内容区 + 侧栏）
-│   │   └── AdminPage.vue      # 后台管理
-│   ├── stores/
-│   │   ├── auth.ts            # 用户认证状态
-│   │   └── notes.ts           # 备忘录数据状态
-│   ├── plugins/vuetify.ts     # Vuetify 配置
-│   └── main.ts
-├── server-go/
-│   └── main.go                # Go 后端（API + 静态文件服务）
-├── vite.config.ts
-└── package.json
-`
+```
+src/
+  components/          组件
+    NoteCard.vue          备忘录卡片
+    MarkdownPreview.vue   Markdown 渲染
+    Heatmap.vue           活动热力图
+    LoginDialog.vue       登录/注册弹窗
+    AppIconPicker.vue     工具栏图标选择
+    AvatarPicker.vue      头像选择
+    FaviconPicker.vue     网站图标选择
+  views/
+    NotesPage.vue         主页面（内容区 + 侧栏）
+    AdminPage.vue         后台管理
+  stores/
+    auth.ts               用户认证状态
+    notes.ts              备忘录数据状态
+  plugins/vuetify.ts      Vuetify 配置
+  main.ts
+server-go/
+  main.go                 Go 后端（API + 静态文件服务）
+vite.config.ts
+package.json
+```
 
 ## API 概览
 
@@ -119,3 +120,4 @@ go build -o mengji .
 ## License
 
 MIT
+
