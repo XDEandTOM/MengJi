@@ -50,7 +50,8 @@ func initDB() {
 		`CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY, content TEXT, created_at INTEGER, updated_at INTEGER, pinned INTEGER DEFAULT 0, tags TEXT DEFAULT '[]', username TEXT, avatar TEXT, nickname TEXT)`,
 		`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`,
 	}
-	for _, t := range tables {
+	db.Exec("ALTER TABLE users ADD COLUMN theme_color TEXT DEFAULT '#1976D2'")
+  for _, t := range tables {
 		if _, err := db.Exec(t); err != nil {
 			log.Fatal(err)
 		}
@@ -128,8 +129,9 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 			return
 		}
 		var avatar, nickname string
-		db.QueryRow("SELECT avatar, nickname FROM users WHERE username=?", body.Username).Scan(&avatar, &nickname)
-		jsonResp(w, map[string]interface{}{"username": body.Username, "avatar": avatar, "nickname": nickname, "role": role})
+		var themeColor string
+		db.QueryRow("SELECT avatar, nickname, theme_color FROM users WHERE username=?", body.Username).Scan(&avatar, &nickname, &themeColor)
+		jsonResp(w, map[string]interface{}{"username": body.Username, "avatar": avatar, "nickname": nickname, "role": role, "theme_color": themeColor})
 
 	case path == "/auth/register" && r.Method == "POST":
 		var body struct{ Username, Password string }
@@ -154,9 +156,9 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 
 	case path == "/auth/verify" && r.Method == "GET":
 		username := r.URL.Query().Get("username")
-		var avatar, nickname, role string
-		err := db.QueryRow("SELECT avatar, nickname, role FROM users WHERE username=?", username).Scan(&avatar, &nickname, &role)
-		jsonResp(w, map[string]interface{}{"valid": err == nil, "avatar": avatar, "nickname": nickname, "role": role})
+		var avatar, nickname, role, themeColor string
+		err := db.QueryRow("SELECT avatar, nickname, role, theme_color FROM users WHERE username=?", username).Scan(&avatar, &nickname, &role, &themeColor)
+		jsonResp(w, map[string]interface{}{"valid": err == nil, "avatar": avatar, "nickname": nickname, "role": role, "theme_color": themeColor})
 
 	case path == "/auth/avatar" && r.Method == "PATCH":
 		var body struct{ Username, Avatar string }
@@ -180,6 +182,12 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 		var body struct{ Username, AppIcon string }
 		json.NewDecoder(r.Body).Decode(&body)
 		db.Exec("UPDATE users SET avatar=? WHERE username=?", body.AppIcon, body.Username)
+		jsonResp(w, map[string]string{"success": "ok"})
+
+	case path == "/auth/theme" && r.Method == "PATCH":
+		var body struct{ Username, Theme string }
+		json.NewDecoder(r.Body).Decode(&body)
+		db.Exec("UPDATE users SET theme_color=? WHERE username=?", body.Theme, body.Username)
 		jsonResp(w, map[string]string{"success": "ok"})
 
 	case path == "/auth/password" && r.Method == "PATCH":

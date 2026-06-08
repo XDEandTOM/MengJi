@@ -23,6 +23,16 @@ const nickInput = ref(auth.userNickname)
 const showAvatarPicker = ref(false)
 const showAppIconPicker = ref(false)
 const showFaviconPicker = ref(false)
+const themeColorInput = ref(auth.userThemeColor)
+
+function onColorChange(e: Event) {
+  themeColorInput.value = (e.target as HTMLInputElement).value
+}
+
+async function saveThemeColor() {
+  await auth.updateThemeColor(themeColorInput.value)
+  snackMsg.value = '主题色已保存'; snackbar.value = true
+}
 const allowRegister = ref(true)
 const siteTitle = ref("")
 const siteIcp = ref("")
@@ -275,6 +285,18 @@ function formatDate(ts: number) { return new Date(ts).toLocaleString("zh-CN") }
             </div>
             <v-btn size="small" variant="tonal" color="primary" @click="showAvatarPicker = true">修改</v-btn>
           </div>
+          <v-divider />
+          <div class="d-flex align-center justify-space-between">
+            <div class="d-flex align-center ga-3">
+              <v-icon color="primary">mdi-palette</v-icon>
+              <span class="text-body-2">主题色</span>
+            </div>
+            <div class="d-flex align-center ga-2">
+              <input type="color" :value="auth.userThemeColor" @input="onColorChange"
+                class="theme-picker" />
+              <v-btn size="small" variant="tonal" color="primary" @click="saveThemeColor">保存</v-btn>
+            </div>
+          </div>
         </div>
       </v-card>
       <AvatarPicker v-model="showAvatarPicker" />
@@ -285,6 +307,9 @@ function formatDate(ts: number) { return new Date(ts).toLocaleString("zh-CN") }
 
 <style scoped>
 .stat-card { border-color: #424242 !important; }
+.theme-picker { width: 36px; height: 36px; border: none; border-radius: 50%; cursor: pointer; padding: 0; background: none; }
+.theme-picker::-webkit-color-swatch-wrapper { padding: 0; }
+.theme-picker::-webkit-color-swatch { border: 2px solid rgba(var(--v-theme-on-surface), 0.15); border-radius: 50%; }
 @media (max-width: 768px) {
   .admin-container { padding: 12px !important; }
   .admin-container :deep(.v-tabs) { flex-wrap: nowrap; overflow-x: auto; }

@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
 import { ref, onMounted, watch } from "vue"
-import { useDisplay } from "vuetify"
+import { useDisplay, useTheme } from "vuetify"
 import { useAuthStore } from "@/stores/auth"
 import NotesPage from "@/views/NotesPage.vue"
 
@@ -15,7 +15,7 @@ const showAdmin = ref(false)
 const showLogin = ref(false)
 const showMobileHeatmap = ref(false)
 
-onMounted(() => { auth.init(); loadSiteTitle() })
+onMounted(async () => { await auth.init(); await loadSiteTitle(); applyThemeColor(auth.userThemeColor) })
 
 async function loadSiteTitle() {
   try {
@@ -32,6 +32,19 @@ async function loadSiteTitle() {
     }
   } catch { /* ignore */ }
 }
+
+const vuetifyTheme = useTheme()
+
+function applyThemeColor(color: string) {
+  if (color && color !== "#1976D2") {
+    vuetifyTheme.themes.value.light.colors.primary = color
+    vuetifyTheme.themes.value.dark.colors.primary = color
+  }
+}
+
+watch(() => auth.userThemeColor, (color) => {
+  if (color) applyThemeColor(color)
+})
 
 watch([() => auth.isLoggedIn, () => auth.userRole], () => {
   if (!auth.isLoggedIn || auth.userRole !== "admin") showAdmin.value = false

@@ -17,7 +17,8 @@ export const useAuthStore = defineStore("auth", () => {
   const userAvatar = ref("")
   const userNickname = ref("")
   const userAppIcon = ref("")
-  const userRole = ref("user")
+  const userThemeColor = ref("#1976D2")
+const userRole = ref("user")
   const isAdmin = computed(() => userRole.value === "admin")
   const ready = ref(false)
 
@@ -34,6 +35,8 @@ export const useAuthStore = defineStore("auth", () => {
           userAvatar.value = data.avatar || ""
           userNickname.value = data.nickname || ""
           userRole.value = data.role || "user"
+      userThemeColor.value = data.theme_color || "#1976D2"
+          userThemeColor.value = data.theme_color || "#1976D2"
           localStorage.setItem(AVATAR_KEY, data.avatar || "")
           localStorage.setItem(NICK_KEY, data.nickname || "")
         } else {
@@ -45,6 +48,7 @@ export const useAuthStore = defineStore("auth", () => {
         userAvatar.value = localStorage.getItem(AVATAR_KEY) || ""
         userNickname.value = localStorage.getItem(NICK_KEY) || ""
         userRole.value = "user"
+        userThemeColor.value = "#1976D2"
       }
     }
     ready.value = true
@@ -79,6 +83,17 @@ export const useAuthStore = defineStore("auth", () => {
     } catch { return "无法连接服务器" }
   }
 
+  async function updateThemeColor(color: string) {
+    if (!isLoggedIn.value) return
+    try {
+      await fetch(`${API}/auth/theme`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: userName.value, theme: color }),
+      })
+      userThemeColor.value = color
+    } catch { /* ignore */ }
+  }
+
   async function updateAppIcon(appIcon: string) {
     if (!isLoggedIn.value) return
     try {
@@ -104,6 +119,7 @@ export const useAuthStore = defineStore("auth", () => {
       isLoggedIn.value = true
       userName.value = username.trim()
       userAvatar.value = ""; userNickname.value = ""; userAppIcon.value = ""; userRole.value = data.role || "user"
+      userThemeColor.value = "#1976D2"
       return null
     } catch { return "无法连接服务器" }
   }
@@ -125,6 +141,7 @@ export const useAuthStore = defineStore("auth", () => {
       userAvatar.value = data.avatar || ""
       userNickname.value = data.nickname || ""
       userRole.value = data.role || "user"
+      userThemeColor.value = data.theme_color || "#1976D2"
       return null
     } catch { return "无法连接服务器" }
   }
@@ -132,9 +149,9 @@ export const useAuthStore = defineStore("auth", () => {
   function logout() {
     clearStorage()
     isLoggedIn.value = false
-    userName.value = ""; userAvatar.value = ""; userNickname.value = ""; userAppIcon.value = ""; userRole.value = "user"
+    userName.value = ""; userAvatar.value = ""; userNickname.value = ""; userAppIcon.value = ""; userThemeColor.value = "#1976D2"; userRole.value = "user"
   }
 
-  return { isLoggedIn, userName, userAvatar, userNickname, userAppIcon, userRole, isAdmin, ready,
-    init, updateAvatar, updateNickname, updateAppIcon, register, login, logout }
+  return { isLoggedIn, userName, userAvatar, userNickname, userAppIcon, userThemeColor, userRole, isAdmin, ready,
+    init, updateAvatar, updateNickname, updateThemeColor, updateAppIcon, register, login, logout }
 })
