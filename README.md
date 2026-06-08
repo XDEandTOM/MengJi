@@ -97,6 +97,15 @@ go build -o suisui .
 └── README.md
 ```
 
+## TODO
+
+- [ ] 无限滚动 / 分页加载
+- [ ] 自动保存草稿
+- [ ] 代码块主题切换
+- [ ] 笔记导出 / 导入
+- [ ] 置顶排序拖动
+- [ ] WebSocket 实时更新
+
 ## License
 
 MIT
