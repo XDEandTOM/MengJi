@@ -23,7 +23,7 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 		if o := r.URL.Query().Get("offset"); o != "" {
 			fmt.Sscanf(o, "%d", &offset)
 		}
-		query := "SELECT id, content, created_at, updated_at, pinned, tags, username, avatar, nickname FROM notes ORDER BY created_at DESC"
+		query := "SELECT id, content, created_at, updated_at, pinned, tags, username, avatar, nickname FROM notes ORDER BY pinned DESC, CASE WHEN pinned=1 THEN pin_order ELSE 0 END ASC, created_at DESC"
 		var args []interface{}
 		if limit > 0 {
 			query += " LIMIT ?"
@@ -150,6 +150,21 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 			execSQL("INSERT OR IGNORE INTO reactions (id, emoji, username) VALUES (?, ?, ?)", noteId, body.Emoji, body.Username)
 		} else {
 			execSQL("DELETE FROM reactions WHERE id=? AND emoji=? AND username=?", noteId, body.Emoji, body.Username)
+		}
+		jsonResp(w, map[string]string{"success": "ok"})
+	case path == "/notes/reorder" && r.Method == "PATCH":
+		tokenUser, tokenValid := verifyToken(r)
+		if !tokenValid {
+			errResp(w, "unauthorized", 401)
+			return
+		}
+		var body struct{ Order []string }
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			errResp(w, "无效的请求数据", 400)
+			return
+		}
+		for i, id := range body.Order {
+			execSQL("UPDATE notes SET pin_order=? WHERE id=? AND username=?", i, id, tokenUser)
 		}
 		jsonResp(w, map[string]string{"success": "ok"})
 	default:

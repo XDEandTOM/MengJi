@@ -268,6 +268,43 @@ function handleEdit(memo: any) {
   document.querySelector(".inline-textarea")?.scrollIntoView({ behavior: "smooth" })
   ;(document.querySelector(".inline-textarea") as HTMLTextAreaElement)?.focus()
 }
+
+// Drag-and-drop reorder for pinned notes
+const dragId = ref("")
+const dragOverId = ref("")
+
+function onDragStart(note: any) {
+  dragId.value = note.id
+}
+
+function onDragOver(e: DragEvent, note: any) {
+  if (note.id !== dragId.value && note.pinned) {
+    e.preventDefault()
+    dragOverId.value = note.id
+  }
+}
+
+function onDragLeave() {
+  dragOverId.value = ""
+}
+
+async function onDrop(e: DragEvent, targetNote: any) {
+  e.preventDefault()
+  dragOverId.value = ""
+  if (!dragId.value || dragId.value === targetNote.id) return
+  const pinnedNotes = filteredNotes.value.filter(n => n.pinned)
+  const fromIdx = pinnedNotes.findIndex(n => n.id === dragId.value)
+  const toIdx = pinnedNotes.findIndex(n => n.id === targetNote.id)
+  if (fromIdx === -1 || toIdx === -1) return
+  pinnedNotes.splice(toIdx, 0, pinnedNotes.splice(fromIdx, 1)[0])
+  const order = pinnedNotes.map(n => n.id)
+  await authFetch("/api/notes/reorder", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ order }),
+  })
+  await store.fetchNotes()
+}
 </script>
 
 <template>
@@ -400,7 +437,15 @@ function handleEdit(memo: any) {
           <p v-else class="text-body-1 mb-1 font-weight-medium">还没有备忘录</p>
         </div>
         <div class="d-flex flex-column ga-3">
-          <NoteCard v-for="note in filteredNotes" :key="note.id" :memo="note" :search-query="searchQuery" :logged-in="auth.isLoggedIn" @edit="handleEdit" />
+          <div v-for="note in filteredNotes" :key="note.id"
+            :draggable="note.pinned && auth.isLoggedIn"
+            @dragstart="onDragStart(note)"
+            @dragover="onDragOver($event, note)"
+            @dragleave="onDragLeave"
+            @drop="onDrop($event, note)"
+            :class="['note-drag-wrapper', { 'drag-over': dragOverId === note.id, 'dragging': dragId === note.id }]">
+            <NoteCard :memo="note" :search-query="searchQuery" :logged-in="auth.isLoggedIn" @edit="handleEdit" />
+          </div>
         </div>
             </template>
       <div v-if="siteIcp" class="text-center text-caption py-4 icp-text" style="opacity:0.6">
@@ -470,6 +515,16 @@ function handleEdit(memo: any) {
   display: flex; align-items: center; gap: 4px;
   padding: 2px 12px 8px 12px;
   font-size: 0.7rem; color: rgba(var(--v-theme-warning), 0.7);
+}
+.note-drag-wrapper {
+  transition: opacity 0.15s, box-shadow 0.15s;
+  border-radius: 12px;
+}
+.note-drag-wrapper.dragging {
+  opacity: 0.4;
+}
+.note-drag-wrapper.drag-over {
+  box-shadow: 0 0 0 2px rgb(var(--v-theme-primary));
 }
 
 @media (max-width: 768px) {

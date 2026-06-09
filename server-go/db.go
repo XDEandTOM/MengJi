@@ -94,7 +94,7 @@ func initDB() {
 	migrate()
 }
 
-const schemaVersion = 2
+const schemaVersion = 3
 
 func migrate() {
 	var version int
@@ -106,12 +106,10 @@ func migrate() {
 		return
 	}
 	if version < 1 {
-		// v1: base tables — already created by initDB above
 		execSQL("INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (1, ?)", time.Now().UnixMilli())
 		version = 1
 	}
 	if version < 2 {
-		// v2: theme_color, app_icon, salt columns + indexes
 		execSQL("ALTER TABLE users ADD COLUMN theme_color TEXT DEFAULT '#1976D2'")
 		execSQL("ALTER TABLE users ADD COLUMN app_icon TEXT DEFAULT ''")
 		execSQL("ALTER TABLE users ADD COLUMN salt TEXT DEFAULT ''")
@@ -121,7 +119,12 @@ func migrate() {
 		execSQL("INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (2, ?)", time.Now().UnixMilli())
 		version = 2
 	}
-	// Future migrations: add more if version < N blocks here
+	if version < 3 {
+		execSQL("ALTER TABLE notes ADD COLUMN pin_order INTEGER DEFAULT 0")
+		execSQL("ALTER TABLE trash ADD COLUMN pin_order INTEGER DEFAULT 0")
+		execSQL("INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (3, ?)", time.Now().UnixMilli())
+		version = 3
+	}
 	log.Printf("Schema migrated to v%d", version)
 }
 
