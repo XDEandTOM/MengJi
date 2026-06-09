@@ -28,7 +28,6 @@ async function onUpload(e: Event) {
     }
   } catch {}
   uploading.value = false
-  emit("update:modelValue", false)
 }
 </script>
 <template>

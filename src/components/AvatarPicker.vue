@@ -20,7 +20,6 @@ async function onUpload(e: Event) {
     if (data.success) await auth.updateAvatar(data.url)
   } catch {}
   uploading.value = false
-  emit("update:modelValue", false)
 }
 </script>
 <template>
