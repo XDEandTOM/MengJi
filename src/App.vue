@@ -16,7 +16,17 @@ const showAdmin = ref(false)
 const showLogin = ref(false)
 const showMobileHeatmap = ref(false)
 
-onMounted(async () => { await auth.init(); await loadSiteTitle(); applyThemeColor(auth.userThemeColor) })
+const THEME_KEY = "suisui-theme"
+
+const vuetifyTheme = useTheme()
+
+onMounted(async () => {
+  const saved = localStorage.getItem(THEME_KEY)
+  if (saved && saved !== "system") vuetifyTheme.global.name.value = saved
+  await auth.init()
+  await loadSiteTitle()
+  applyThemeColor(auth.userThemeColor)
+})
 
 async function loadSiteTitle() {
   try {
@@ -34,7 +44,15 @@ async function loadSiteTitle() {
   } catch { /* ignore */ }
 }
 
-const vuetifyTheme = useTheme()
+function toggleTheme() {
+  const names = ["system", "light", "dark"]
+  const current = vuetifyTheme.global.name.value
+  const idx = names.indexOf(current)
+  const next = names[(idx + 1) % names.length]
+  if (next === "system") localStorage.removeItem(THEME_KEY)
+  else localStorage.setItem(THEME_KEY, next)
+  vuetifyTheme.global.name.value = next
+}
 
 function applyThemeColor(color: string) {
   if (color && color !== "#1976D2") {
@@ -66,7 +84,7 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
       </div>
       <div class="sidebar-middle" />
       <div class="sidebar-bottom">
-        <v-btn icon="mdi-theme-light-dark" variant="text" size="small" class="sidebar-btn" @click.stop="$vuetify.theme.cycle()" />
+        <v-btn icon="mdi-theme-light-dark" variant="text" size="small" class="sidebar-btn" @click.stop="toggleTheme" />
         <template v-if="auth.ready && auth.isLoggedIn">
           <v-btn icon="mdi-cog-outline" variant="text" size="small" class="sidebar-btn"
             :color="showAdmin ? 'primary' : undefined"
@@ -88,7 +106,7 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
           <AppLogo :size="22" />
         </template>
         <v-spacer />
-        <v-btn icon="mdi-theme-light-dark" variant="text" size="small" class="mobile-bar-btn" @click.stop="$vuetify.theme.cycle()" />
+        <v-btn icon="mdi-theme-light-dark" variant="text" size="small" class="mobile-bar-btn" @click.stop="toggleTheme" />
         <v-btn icon="mdi-fire" variant="text" size="small" class="mobile-bar-btn"
           :color="showMobileHeatmap ? 'primary' : undefined"
           @click.stop="showMobileHeatmap = !showMobileHeatmap" />
