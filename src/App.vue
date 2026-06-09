@@ -22,7 +22,7 @@ const vuetifyTheme = useTheme()
 
 onMounted(async () => {
   const saved = localStorage.getItem(THEME_KEY)
-  if (saved && saved !== "system") vuetifyTheme.change(saved)
+  if (saved === "dark") vuetifyTheme.global.name.value = "dark"
   await auth.init()
   await loadSiteTitle()
   applyThemeColor(auth.userThemeColor)
@@ -45,13 +45,9 @@ async function loadSiteTitle() {
 }
 
 function toggleTheme() {
-  const names = ["system", "light", "dark"]
-  const current = vuetifyTheme.global.name.value
-  const idx = names.indexOf(current)
-  const next = names[(idx + 1) % names.length]
-  if (next === "system") localStorage.removeItem(THEME_KEY)
-  else localStorage.setItem(THEME_KEY, next)
-  vuetifyTheme.change(next)
+  const next = vuetifyTheme.global.name.value === "dark" ? "light" : "dark"
+  localStorage.setItem(THEME_KEY, next)
+  vuetifyTheme.global.name.value = next
 }
 
 function applyThemeColor(color: string) {
