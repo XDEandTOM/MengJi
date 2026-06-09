@@ -106,9 +106,11 @@ PORT=8080 ./suisui    # 环境变量（优先级高于 -port）
 确保已安装 Docker，然后运行：
 
 ```bash
-# 拉取镜像并运行
+# 拉取镜像并运行（CPU 500m，内存 256MB）
 docker run -d \
   --name suisui \
+  --cpus="0.5" \
+  --memory="256m" \
   -p 3001:3001 \
   -v suisui-data:/data \
   linraintong/suisui:latest
@@ -126,6 +128,11 @@ services:
       - "3001:3001"
     volumes:
       - suisui-data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "256M"
     restart: unless-stopped
 
 volumes:
