@@ -135,7 +135,6 @@ function formatDate(ts: number) { return new Date(ts).toLocaleString("zh-CN") }
       <AdminProfile />
     </template>
 
-    <div class="text-center text-caption text-medium-emphasis pt-4">v1.2.0</div>
   </v-container>
 </template>
 
