@@ -201,6 +201,26 @@ async function onInlineUpload(e: Event) {
   input.value = ""
 }
 
+async function onInlineDrop(e: DragEvent) {
+  const files = e.dataTransfer?.files
+  if (!files || !files.length) return
+  e.preventDefault()
+  if (Array.from(files).some(f => f.size > 10 * 1024 * 1024)) { alert("图片大小不能超过 10MB"); return }
+  inlineUploading.value = true
+  for (const file of Array.from(files)) {
+    if (!file.type.startsWith("image/")) continue
+    const fd = new FormData()
+    fd.append("image", file)
+    try {
+      const res = await fetch("/api/notes/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (data.success) uploadedImages.value.push(data.url)
+      else alert(data.error || "上传失败")
+    } catch { alert("上传失败") }
+  }
+  inlineUploading.value = false
+}
+
 async function onInlinePaste(e: ClipboardEvent) {
   const items = e.clipboardData?.items
   if (!items) return
@@ -327,7 +347,7 @@ function handleEdit(memo: any) {
       </v-dialog>
 
       <div v-if="auth.isLoggedIn" class="inline-editor mb-4">
-        <div class="editor-box">
+        <div class="editor-box" @drop.prevent="onInlineDrop" @dragover.prevent>
           <div class="md-toolbar">
             <v-btn icon="mdi-format-bold" size="x-small" variant="text" class="tool-btn" @click="insertBold" title="粗体" />
             <v-btn icon="mdi-format-italic" size="x-small" variant="text" class="tool-btn" @click="insertItalic" title="斜体" />
