@@ -16,6 +16,7 @@ export interface Note {
   username: string
   avatar?: string
   nickname?: string
+  reactions?: NoteReaction
 }
 
 function generateId(): string {

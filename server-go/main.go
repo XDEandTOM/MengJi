@@ -49,6 +49,7 @@ func initDB() {
 		`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL, nickname TEXT DEFAULT '', avatar TEXT DEFAULT '', role TEXT DEFAULT 'user', created_at INTEGER DEFAULT 0)`,
 		`CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY, content TEXT, created_at INTEGER, updated_at INTEGER, pinned INTEGER DEFAULT 0, tags TEXT DEFAULT '[]', username TEXT, avatar TEXT, nickname TEXT)`,
 		`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`,
+		`CREATE TABLE IF NOT EXISTS reactions (id TEXT, emoji TEXT, username TEXT, PRIMARY KEY (id, emoji, username))`,
 	}
 	db.Exec("ALTER TABLE users ADD COLUMN theme_color TEXT DEFAULT '#1976D2'")
   db.Exec("ALTER TABLE users ADD COLUMN app_icon TEXT DEFAULT ''")
@@ -239,7 +240,7 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 			notes = append(notes, map[string]interface{}{
 				"id": id, "content": content, "createdAt": createdAt, "updatedAt": updatedAt,
 				"pinned": pinned == 1, "tags": tagList, "username": username,
-				"avatar": avatar, "nickname": nickname,
+				"avatar": avatar, "nickname": nickname,"reactions": getReactions(id),
 			})
 		}
 		if notes == nil {
@@ -273,6 +274,17 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 		dst.Close()
 		jsonResp(w, map[string]interface{}{"success": true, "url": "/uploads/" + name})
 
+	case strings.HasSuffix(path, "/react") && (r.Method == "POST" || r.Method == "DELETE"):
+		noteId := strings.TrimSuffix(strings.TrimPrefix(path, "/notes/"), "/react")
+		var body struct{ Emoji, Username string }
+		json.NewDecoder(r.Body).Decode(&body)
+		if body.Emoji == "" || body.Username == "" { errResp(w, "emoji and username required", 400); return }
+		if r.Method == "POST" {
+			db.Exec("INSERT OR IGNORE INTO reactions (id, emoji, username) VALUES (?, ?, ?)", noteId, body.Emoji, body.Username)
+		} else {
+			db.Exec("DELETE FROM reactions WHERE id=? AND emoji=? AND username=?", noteId, body.Emoji, body.Username)
+		}
+		jsonResp(w, map[string]string{"success": "ok"})
 	default:
 		parts := strings.Split(strings.TrimPrefix(path, "/notes/"), "/")
 		if len(parts) == 1 && r.Method == "PUT" {
@@ -289,6 +301,21 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 			jsonResp(w, map[string]string{"success": "ok"})
 		}
 	}
+}
+
+
+func getReactions(noteId string) map[string][]string {
+	rows, err := db.Query("SELECT emoji, username FROM reactions WHERE id=?", noteId)
+	if err != nil { return map[string][]string{} }
+	defer rows.Close()
+	reactions := map[string][]string{}
+	for rows.Next() {
+		var emoji, username string
+		rows.Scan(&emoji, &username)
+		reactions[emoji] = append(reactions[emoji], username)
+	}
+	if reactions == nil { reactions = map[string][]string{} }
+	return reactions
 }
 
 func handleSettings(w http.ResponseWriter, r *http.Request) {
