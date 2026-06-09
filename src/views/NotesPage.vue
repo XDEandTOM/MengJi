@@ -353,7 +353,7 @@ function handleEdit(memo: any) {
           <p v-else class="text-body-1 mb-1 font-weight-medium">还没有备忘录</p>
         </div>
         <div class="d-flex flex-column ga-3">
-          <NoteCard v-for="note in filteredNotes" :key="note.id" :memo="note" :logged-in="auth.isLoggedIn" @edit="handleEdit" />
+          <NoteCard v-for="note in filteredNotes" :key="note.id" :memo="note" :search-query="searchQuery" :logged-in="auth.isLoggedIn" @edit="handleEdit" />
         </div>
             </template>
       <div v-if="siteIcp" class="text-center text-caption py-4 icp-text" style="opacity:0.6">

@@ -6,7 +6,7 @@ import { useAuthStore } from "@/stores/auth"
 import MarkdownPreview from "./MarkdownPreview.vue"
 import emojiRaw from "emojibase-data/zh/compact.json"
 
-const props = defineProps<{ memo: Note; loggedIn: boolean }>()
+const props = defineProps<{ memo: Note; loggedIn: boolean; searchQuery?: string }>()
 const emit = defineEmits<{ edit: [memo: Note] }>()
 const store = useNotesStore()
 const auth = useAuthStore()
@@ -101,7 +101,7 @@ function timeAgo(ts: number) {
         </div>
       </div>
       <div ref="contentRef" class="memo-content" :class="{ collapsed: !expanded && isOverflow }">
-        <MarkdownPreview :content="memo.content" />
+        <MarkdownPreview :content="memo.content" :search-query="props.searchQuery" />
       </div>
       <div v-if="isOverflow" class="expand-bar">
         <button class="expand-btn" @click="expanded = !expanded">

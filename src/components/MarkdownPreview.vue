@@ -39,12 +39,18 @@ renderer.code = ({ text, lang }) => {
 
 marked.setOptions({ breaks: true, gfm: true })
 
-const props = defineProps<{ content: string }>()
+const props = defineProps<{ content: string; searchQuery?: string }>()
 const zoomedImage = ref("")
+
+function highlightText(text: string, query: string): string {
+  if (!query || !query.trim()) return text
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  return text.replace(new RegExp(`(${escaped})`, "gi"), "<mark>$1</mark>")
+}
 
 const rendered = computed(() => {
   try {
-    let html = marked(props.content, { renderer }) as string
+    let html = marked(highlightText(props.content, props.searchQuery || ""), { renderer }) as string
     let carouselIdx = 0
     html = html.replace(/((?:<p><img[^>]*><\/p>\s*)+)/g, (match) => {
       const images = match.match(/<img[^>]*>/g)
@@ -164,6 +170,13 @@ function handleClick(e: MouseEvent) {
 .markdown-body :deep(.carousel-next) { right: 8px; }
 .markdown-body :deep(.carousel-dots) { display: flex; gap: 6px; justify-content: center; padding: 8px; }
 .markdown-body :deep(.carousel-dot) { width: 8px; height: 8px; border-radius: 50%; background: rgb(var(--v-theme-primary)); opacity: 0.35; cursor: pointer; transition: opacity 0.2s; }
+
+.markdown-body :deep(mark) {
+  background: rgba(var(--v-theme-warning), 0.35);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 2px;
+}
 </style>
 
 <style>
