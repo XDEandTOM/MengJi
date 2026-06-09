@@ -101,6 +101,45 @@ cd server-go && go build -o suisui .
 PORT=8080 ./suisui    # 环境变量（优先级高于 -port）
 ```
 
+### Docker 部署
+
+确保已安装 Docker，然后运行：
+
+```bash
+# 拉取镜像并运行
+docker run -d \
+  --name suisui \
+  -p 3001:3001 \
+  -v suisui-data:/data \
+  linraintong/suisui:latest
+```
+
+或者使用 Docker Compose，创建 `docker-compose.yml`：
+
+```yaml
+version: "3"
+services:
+  suisui:
+    image: linraintong/suisui:latest
+    container_name: suisui
+    ports:
+      - "3001:3001"
+    volumes:
+      - suisui-data:/data
+    restart: unless-stopped
+
+volumes:
+  suisui-data:
+```
+
+然后启动：
+
+```bash
+docker compose up -d
+```
+
+打开 **http://localhost:3001** — 默认管理员：`admin / admin`
+
 ---
 
 ## 🏗️ 项目架构
