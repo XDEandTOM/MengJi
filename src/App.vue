@@ -22,7 +22,7 @@ const vuetifyTheme = useTheme()
 
 onMounted(async () => {
   const saved = localStorage.getItem(THEME_KEY)
-  if (saved && saved !== "system") vuetifyTheme.global.name.value = saved
+  if (saved && saved !== "system") vuetifyTheme.change(saved)
   await auth.init()
   await loadSiteTitle()
   applyThemeColor(auth.userThemeColor)
@@ -51,7 +51,7 @@ function toggleTheme() {
   const next = names[(idx + 1) % names.length]
   if (next === "system") localStorage.removeItem(THEME_KEY)
   else localStorage.setItem(THEME_KEY, next)
-  vuetifyTheme.global.name.value = next
+  vuetifyTheme.change(next)
 }
 
 function applyThemeColor(color: string) {
