@@ -3,6 +3,7 @@ import { ref, computed } from "vue"
 import { useNotesStore } from '@/stores/notes'
 
 const store = useNotesStore()
+const emit = defineEmits<{ "select-day": [date: string] }>()
 
 const currentYear = ref(new Date().getFullYear())
 const currentMonth = ref(new Date().getMonth())
@@ -89,7 +90,7 @@ function formatTooltip(day: number, count: number) {
               <div v-bind="tp" class="cal-cell day-cell" :class="[
                 getColor(cell.count),
                 { today: hasTodayInMonth && cell.day === new Date().getDate() }
-              ]">{{ cell.day }}</div>
+              ]" @click="cell.day > 0 && emit('select-day', currentYear + '-' + String(currentMonth + 1).padStart(2, '0') + '-' + String(cell.day).padStart(2, '0'))">{{ cell.day }}</div>
             </template>
           </v-tooltip>
           <div v-else class="cal-cell day-cell empty-cell" />

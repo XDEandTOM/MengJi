@@ -16,6 +16,7 @@ const { mobile } = useDisplay()
 const isMobile = mobile
 const searchQuery = ref("")
 const selectedTag = ref("")
+const selectedDay = ref("")
 
 const siteIcp = ref("")
 const versionText = ref("")
@@ -110,6 +111,13 @@ const filteredNotes = computed(() => {
     })
   }
   if (selectedTag.value) list = list.filter(n => n.tags && Array.isArray(n.tags) && n.tags.includes(selectedTag.value))
+  if (selectedDay.value) {
+    list = list.filter(n => {
+      const d = new Date(n.createdAt)
+      const ds = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0")
+      return ds === selectedDay.value
+    })
+  }
   return list
 })
 
@@ -314,7 +322,7 @@ async function onDrop(e: DragEvent, targetNote: any) {
         <v-text-field v-model="searchQuery" prepend-inner-icon="mdi-magnify"
           label="搜索备忘..." variant="outlined" hide-details density="compact"
           clearable class="mb-3 rounded-search search-border" />
-        <Heatmap class="mb-4" style="border-color:#424242 !important" />
+        <Heatmap class="mb-4" style="border-color:#424242 !important" @select-day="selectedDay = $event" />
         <v-card variant="outlined" class="rounded-xl pa-4 side-card">
           <div class="d-flex align-center ga-2 mb-3">
             <span class="text-subtitle-2 font-weight-medium">标签</span>
@@ -344,7 +352,7 @@ async function onDrop(e: DragEvent, targetNote: any) {
             <v-spacer /><v-btn icon="mdi-close" size="small" variant="text" @click="emit('close-heatmap')" />
           </div>
           <v-text-field v-model="searchQuery" prepend-inner-icon="mdi-magnify" label="搜索备忘..." variant="outlined" hide-details density="compact" clearable class="mb-3 rounded-search search-border" />
-          <Heatmap class="mb-4" style="border-color:#424242 !important" />
+          <Heatmap class="mb-4" style="border-color:#424242 !important" @select-day="selectedDay = $event; emit('close-heatmap')" />
           <v-card variant="outlined" class="rounded-xl pa-4 side-card">
             <div class="d-flex align-center ga-2 mb-3"><span class="text-subtitle-2 font-weight-medium">标签</span></div>
             <div class="d-flex flex-wrap ga-1">
@@ -432,8 +440,13 @@ async function onDrop(e: DragEvent, targetNote: any) {
         <v-progress-circular indeterminate color="primary" />
       </div>
       <template v-else>
+        <div v-if="selectedDay" class="date-filter-bar">
+          <v-icon size="x-small" color="primary">mdi-calendar</v-icon>
+          <span>{{ selectedDay }} 的备忘录</span>
+          <v-btn icon="mdi-close" size="x-small" variant="text" @click="selectedDay = ''" />
+        </div>
         <div v-if="filteredNotes.length === 0" class="d-flex flex-column align-center justify-center py-16 text-medium-emphasis">
-          <p v-if="searchQuery || selectedTag" class="text-body-1 mb-1 font-weight-medium">没有找到匹配的备忘录</p>
+          <p v-if="searchQuery || selectedTag || selectedDay" class="text-body-1 mb-1 font-weight-medium">没有找到匹配的备忘录</p>
           <p v-else class="text-body-1 mb-1 font-weight-medium">还没有备忘录</p>
         </div>
         <div class="d-flex flex-column ga-3">
@@ -515,6 +528,16 @@ async function onDrop(e: DragEvent, targetNote: any) {
   display: flex; align-items: center; gap: 4px;
   padding: 2px 12px 8px 12px;
   font-size: 0.7rem; color: rgba(var(--v-theme-warning), 0.7);
+}
+.date-filter-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px;
+  margin-bottom: 8px;
+  background: rgba(var(--v-theme-primary), 0.06);
+  border: 1px solid rgba(var(--v-theme-primary), 0.15);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: rgb(var(--v-theme-primary));
 }
 .note-drag-wrapper {
   transition: opacity 0.15s, box-shadow 0.15s;
