@@ -31,6 +31,8 @@ function displayName(memo: Note) {
 }
 
 function handleTodoToggle(idx: number) {
+  // Only allow toggling your own notes
+  if (!auth.isLoggedIn || props.memo.username !== auth.userName) return
   const lines = props.memo.content.split("\n")
   let found = -1
   for (let i = 0; i < lines.length; i++) {
@@ -118,7 +120,7 @@ function timeAgo(ts: number) {
             @click="store.deleteNote(memo.id, auth.userName)" />
         </div>
       </div>
-      <div ref="contentRef" class="memo-content" :class="{ collapsed: !expanded && isOverflow }">
+      <div ref="contentRef" class="memo-content" :class="{ collapsed: !expanded && isOverflow, 'not-owned': (auth.isLoggedIn && memo.username !== auth.userName) || !auth.isLoggedIn }">
         <MarkdownPreview :content="memo.content" :search-query="props.searchQuery" @todo-toggle="handleTodoToggle" />
       </div>
       <div v-if="isOverflow" class="expand-bar">
@@ -177,6 +179,10 @@ function timeAgo(ts: number) {
 .memo-card.pinned {
   border-left: 3px solid rgb(var(--v-theme-primary));
   background: rgba(var(--v-theme-primary), 0.02);
+}
+.memo-content.not-owned :deep(input[type="checkbox"]) {
+  pointer-events: none;
+  opacity: 0.5;
 }
 .card-inner { padding: 12px; }
 .avatar-wrap {
