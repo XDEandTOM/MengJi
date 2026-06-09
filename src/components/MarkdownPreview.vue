@@ -23,6 +23,7 @@ onMounted(() => loadHighlightTheme(theme.global.name.value === "dark"))
 watch(isDark, (v) => loadHighlightTheme(v))
 
 const renderer = new marked.Renderer()
+let todoIndex = 0
 renderer.code = ({ text, lang }) => {
   let highlighted: string
   try {
@@ -36,9 +37,17 @@ renderer.code = ({ text, lang }) => {
     <pre><code${langAttr}>${highlighted}</code></pre>
   </div>`
 }
+renderer.listitem = ({ text, task, checked }) => {
+  if (task) {
+    const idx = todoIndex++
+    return `<li><input type="checkbox" data-todo-idx="${idx}" ${checked ? 'checked' : ''}> ${text}</li>`
+  }
+  return `<li>${text}</li>`
+}
 
 marked.setOptions({ breaks: true, gfm: true })
 
+const emit = defineEmits<{ "todo-toggle": [idx: number] }>()
 const props = defineProps<{ content: string; searchQuery?: string }>()
 const zoomedImage = ref("")
 
@@ -55,6 +64,7 @@ function highlightText(text: string, query: string): string {
 }
 
 const rendered = computed(() => {
+  todoIndex = 0
   try {
     let html = marked(highlightText(props.content, props.searchQuery || ""), { renderer }) as string
     let carouselIdx = 0
@@ -75,6 +85,13 @@ const rendered = computed(() => {
 
 function handleClick(e: MouseEvent) {
   const target = e.target as HTMLElement
+  // Todo checkbox toggle
+  const checkbox = target.closest('input[type="checkbox"][data-todo-idx]') as HTMLInputElement
+  if (checkbox) {
+    const idx = parseInt(checkbox.getAttribute("data-todo-idx") || "0", 10)
+    emit("todo-toggle", idx)
+    return
+  }
   const img = target.closest("img") as HTMLImageElement
   if (img) { zoomedImage.value = img.src; return }
   const btn = target.closest(".carousel-btn") as HTMLElement

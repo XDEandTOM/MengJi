@@ -30,6 +30,23 @@ function displayName(memo: Note) {
   return memo.nickname?.trim() || memo.username || "匿名"
 }
 
+function handleTodoToggle(idx: number) {
+  const lines = props.memo.content.split("\n")
+  let found = -1
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*[-*+]\s+\[[ x]\]/.test(lines[i])) {
+      found++
+      if (found === idx) {
+        lines[i] = lines[i].includes("[x]")
+          ? lines[i].replace("[x]", "[ ]")
+          : lines[i].replace("[ ]", "[x]")
+        store.updateNote(props.memo.id, lines.join("\n"), undefined, auth.userName)
+        break
+      }
+    }
+  }
+}
+
 const showEmojiPicker = ref(false)
 
 function getReactionUserId() {
@@ -102,7 +119,7 @@ function timeAgo(ts: number) {
         </div>
       </div>
       <div ref="contentRef" class="memo-content" :class="{ collapsed: !expanded && isOverflow }">
-        <MarkdownPreview :content="memo.content" :search-query="props.searchQuery" />
+        <MarkdownPreview :content="memo.content" :search-query="props.searchQuery" @todo-toggle="handleTodoToggle" />
       </div>
       <div v-if="isOverflow" class="expand-bar">
         <button class="expand-btn" @click="expanded = !expanded">
