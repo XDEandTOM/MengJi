@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from "vue"
+import { ref, onMounted, nextTick } from "vue"
 import type { Note } from "@/stores/notes"
 import { useNotesStore } from "@/stores/notes"
 import { useAuthStore } from "@/stores/auth"
@@ -27,14 +27,8 @@ function isImage(val?: string) {
 }
 
 function displayName(memo: Note) {
-  if (auth.isLoggedIn && memo.username === auth.userName) return auth.userNickname?.trim() || auth.userName || "匿名"
   return memo.nickname?.trim() || memo.username || "匿名"
 }
-
-const avatarSrc = computed(() => {
-  if (auth.isLoggedIn && props.memo.username === auth.userName && auth.userAvatar) return auth.userAvatar
-  return props.memo.avatar || ""
-})
 
 const showEmojiPicker = ref(false)
 
@@ -87,7 +81,7 @@ function timeAgo(ts: number) {
     <div class="card-inner">
       <div class="d-flex align-start ga-3 mb-2">
         <div class="avatar-wrap">
-          <v-img v-if="isImage(avatarSrc)" :src="avatarSrc" alt="" cover width="40" height="40" class="avatar-img" />
+          <v-img v-if="isImage(memo.avatar)" :src="memo.avatar" alt="" cover width="40" height="40" class="avatar-img" />
           <div v-else class="avatar-fallback">{{ displayName(memo).charAt(0).toUpperCase() }}</div>
         </div>
         <div class="flex-grow-1" style="min-width:0">

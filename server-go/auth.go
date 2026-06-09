@@ -118,6 +118,8 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 			errResp(w, "头像更新失败", 500)
 			return
 		}
+		execSQL("UPDATE notes SET avatar=? WHERE username=?", body.Avatar, body.Username)
+		execSQL("UPDATE trash SET avatar=? WHERE username=?", body.Avatar, body.Username)
 		jsonResp(w, map[string]string{"success": "ok"})
 
 	case path == "/auth/nickname" && r.Method == "PATCH":
@@ -143,6 +145,8 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 			errResp(w, "昵称更新失败", 500)
 			return
 		}
+		execSQL("UPDATE notes SET nickname=? WHERE username=?", body.Nickname, body.Username)
+		execSQL("UPDATE trash SET nickname=? WHERE username=?", body.Nickname, body.Username)
 		jsonResp(w, map[string]interface{}{"success": true, "nickname": body.Nickname})
 
 	case path == "/auth/app-icon" && r.Method == "PATCH":
