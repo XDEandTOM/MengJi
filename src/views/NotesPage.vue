@@ -201,6 +201,40 @@ async function onInlineUpload(e: Event) {
   input.value = ""
 }
 
+async function onInlinePaste(e: ClipboardEvent) {
+  const items = e.clipboardData?.items
+  if (!items) return
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.startsWith("image/")) {
+      e.preventDefault()
+      const file = items[i].getAsFile()
+      if (!file) continue
+      if (file.size > 10 * 1024 * 1024) { alert("图片大小不能超过 10MB"); return }
+      inlineUploading.value = true
+      const fd = new FormData()
+      fd.append("image", file)
+      try {
+        const res = await fetch("/api/notes/upload", { method: "POST", body: fd })
+        const data = await res.json()
+        if (data.success) {
+          const imgMd = `![](${data.url})`
+          const el = document.querySelector(".inline-textarea") as HTMLTextAreaElement
+          if (el) {
+            const start = el.selectionStart, end = el.selectionEnd
+            const t = inlineContent.value
+            inlineContent.value = t.slice(0, start) + imgMd + t.slice(end)
+            nextTick(() => { el.focus(); el.selectionStart = el.selectionEnd = start + imgMd.length })
+          } else {
+            uploadedImages.value.push(data.url)
+          }
+        } else alert(data.error || "上传失败")
+      } catch { alert("粘贴图片上传失败") }
+      inlineUploading.value = false
+      return
+    }
+  }
+}
+
 function autoGrowTextarea(e: Event) {
   const el = e.target as HTMLTextAreaElement
   el.style.height = "auto"
@@ -314,7 +348,7 @@ function handleEdit(memo: any) {
             <v-btn icon="mdi-format-quote-open" size="x-small" variant="text" class="tool-btn" @click="insertQuote" title="引用" />
           </div>
           <textarea ref="inlineTextarea" v-model="inlineContent" class="inline-textarea"
-            placeholder="写点什么呢.." rows="1" @keydown="onInlineKeydown" @input="autoGrowTextarea"></textarea>
+            placeholder="写点什么呢.." rows="1" @keydown="onInlineKeydown" @paste="onInlinePaste" @input="autoGrowTextarea"></textarea>
           <div v-if="uploadedImages.length" class="d-flex flex-wrap ga-2 pa-2 pt-0">
             <div v-for="(img, ii) in uploadedImages" :key="ii" style="position:relative;display:inline-block;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid rgba(var(--v-theme-on-surface),0.08);flex-shrink:0">
               <img :src="img" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in" @click.stop="zoomedUpload = img" />
