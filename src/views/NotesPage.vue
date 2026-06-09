@@ -216,18 +216,8 @@ async function onInlinePaste(e: ClipboardEvent) {
       try {
         const res = await fetch("/api/notes/upload", { method: "POST", body: fd })
         const data = await res.json()
-        if (data.success) {
-          const imgMd = `![](${data.url})`
-          const el = document.querySelector(".inline-textarea") as HTMLTextAreaElement
-          if (el) {
-            const start = el.selectionStart, end = el.selectionEnd
-            const t = inlineContent.value
-            inlineContent.value = t.slice(0, start) + imgMd + t.slice(end)
-            nextTick(() => { el.focus(); el.selectionStart = el.selectionEnd = start + imgMd.length })
-          } else {
-            uploadedImages.value.push(data.url)
-          }
-        } else alert(data.error || "上传失败")
+        if (data.success) uploadedImages.value.push(data.url)
+        else alert(data.error || "上传失败")
       } catch { alert("粘贴图片上传失败") }
       inlineUploading.value = false
       return
