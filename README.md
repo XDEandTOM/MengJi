@@ -167,14 +167,6 @@ suisui/
 
 ---
 
-## 📸 截图
-
-> *（欢迎贡献截图！PR 区）*
-
-| 笔记列表 | 后台管理 |
-|----------|----------|
-| ![Notes](https://via.placeholder.com/400x300?text=Notes+Page) | ![Admin](https://via.placeholder.com/400x300?text=Admin+Page) |
-
 ---
 
 ## 📋 API 一览
