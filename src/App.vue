@@ -22,10 +22,11 @@ const vuetifyTheme = useTheme()
 
 onMounted(async () => {
   const saved = localStorage.getItem(THEME_KEY)
-  if (saved === "dark") vuetifyTheme.global.name.value = "dark"
   await auth.init()
   await loadSiteTitle()
   applyThemeColor(auth.userThemeColor)
+  // Restore saved theme after Vuetify's theme system is fully ready
+  if (saved === "dark" || saved === "light") vuetifyTheme.change(saved)
 })
 
 async function loadSiteTitle() {
@@ -46,8 +47,7 @@ async function loadSiteTitle() {
 
 function toggleTheme() {
   const next = vuetifyTheme.global.name.value === "dark" ? "light" : "dark"
-  localStorage.setItem(THEME_KEY, next)
-  vuetifyTheme.global.name.value = next
+  vuetifyTheme.change(next)
 }
 
 function applyThemeColor(color: string) {
@@ -60,6 +60,11 @@ function applyThemeColor(color: string) {
 watch(() => auth.userThemeColor, (color) => {
   if (color) applyThemeColor(color)
 })
+
+// Auto-persist theme whenever it changes
+watch(() => vuetifyTheme.global.name.value, (val) => {
+  if (val === "light" || val === "dark") localStorage.setItem(THEME_KEY, val)
+}, { immediate: false })
 
 watch([() => auth.isLoggedIn, () => auth.userRole], () => {
   if (!auth.isLoggedIn || auth.userRole !== "admin") showAdmin.value = false
