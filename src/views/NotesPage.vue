@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue"
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from "vue"
 import { useDisplay } from "vuetify"
 import { useNotesStore } from "@/stores/notes"
 import { useAuthStore } from "@/stores/auth"
@@ -20,7 +20,54 @@ const selectedTag = ref("")
 const siteIcp = ref("")
 const versionText = ref("")
 const icpLink = "https://beian.miit.gov.cn/#/Integrated/index"
-onMounted(async () => { await store.fetchNotes(); await loadSiteIcp(); fetchVersion() })
+const DRAFT_KEY = "suisui-draft"
+
+const inlineContent = ref("")
+const inlineTagsInput = ref("")
+const showInlineTags = ref(false)
+const inlineUploading = ref(false)
+const inlineTextarea = ref<HTMLTextAreaElement | null>(null)
+const inlineFileInput = ref<HTMLInputElement | null>(null)
+const uploadedImages = ref<string[]>([])
+const editingNoteId = ref("")
+const zoomedUpload = ref("")
+const showTrash = ref(false)
+const deletedNotes = ref([])
+const hasDraft = computed(() => !!(inlineContent.value || uploadedImages.value.length))
+
+function saveDraft() {
+  if (!auth.isLoggedIn) return
+  const draft = { content: inlineContent.value, tags: inlineTagsInput.value, images: uploadedImages.value, editingId: editingNoteId.value }
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)) } catch {}
+}
+
+function restoreDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return
+    const draft = JSON.parse(raw)
+    if (draft.content) inlineContent.value = draft.content
+    if (draft.tags) { inlineTagsInput.value = draft.tags; showInlineTags.value = true }
+    if (draft.images?.length) uploadedImages.value = draft.images
+    if (draft.editingId) editingNoteId.value = draft.editingId
+  } catch {}
+}
+
+function clearDraft() {
+  localStorage.removeItem(DRAFT_KEY)
+}
+
+// Auto-save draft on any editor input (debounced)
+let draftTimer: ReturnType<typeof setTimeout> | null = null
+watch([inlineContent, inlineTagsInput, uploadedImages, editingNoteId], () => {
+  if (draftTimer) clearTimeout(draftTimer)
+  draftTimer = setTimeout(saveDraft, 500)
+}, { deep: true })
+
+onMounted(async () => {
+  await store.fetchNotes(); await loadSiteIcp(); fetchVersion()
+  restoreDraft()
+})
 onBeforeUnmount(() => { zoomedUpload.value = "" })
 
 async function loadSiteIcp() {
@@ -62,18 +109,6 @@ const filteredNotes = computed(() => {
   if (selectedTag.value) list = list.filter(n => n.tags && Array.isArray(n.tags) && n.tags.includes(selectedTag.value))
   return list
 })
-
-const inlineContent = ref("")
-const inlineTagsInput = ref("")
-const showInlineTags = ref(false)
-const inlineUploading = ref(false)
-const inlineTextarea = ref<HTMLTextAreaElement | null>(null)
-const inlineFileInput = ref<HTMLInputElement | null>(null)
-const uploadedImages = ref<string[]>([])
-const editingNoteId = ref("")
-const zoomedUpload = ref("")
-const showTrash = ref(false)
-const deletedNotes = ref([])
 
 function insertMd(b,f,fb) {
   const el = document.querySelector(".inline-textarea")
@@ -134,6 +169,7 @@ async function submitInline() {
   inlineTagsInput.value = ""
   uploadedImages.value = []
   showInlineTags.value = false
+  clearDraft()
   nextTick(() => {
     const el = document.querySelector('.inline-textarea') as HTMLTextAreaElement
     if (el) { el.style.height = '' }
@@ -169,6 +205,7 @@ function autoGrowTextarea(e: Event) {
 }
 
 function handleEdit(memo: any) {
+  clearDraft()
   const imgRegex = /!\[.*?\]\((.+?)\)/g
   const urls: string[] = []
   const text = memo.content.replace(imgRegex, (_m: string, url: string) => { urls.push(url); return "" })
@@ -301,6 +338,10 @@ function handleEdit(memo: any) {
             </div>
           </v-expand-transition>
         </div>
+        <div v-if="hasDraft && !editingNoteId" class="draft-indicator">
+          <v-icon size="x-small" color="warning">mdi-content-save</v-icon>
+          <span>草稿已自动保存</span>
+        </div>
       </div>
 
       <div v-if="!store.loaded" class="d-flex justify-center py-16">
@@ -378,6 +419,11 @@ function handleEdit(memo: any) {
 .md-toolbar .tool-btn:hover { opacity: 1; }
 .search-border :deep(.v-field) { border-color: #424242 !important; }
 .side-card { border-color: #424242 !important; }
+.draft-indicator {
+  display: flex; align-items: center; gap: 4px;
+  padding: 2px 12px 8px 12px;
+  font-size: 0.7rem; color: rgba(var(--v-theme-warning), 0.7);
+}
 
 @media (max-width: 768px) {
   .notes-layout.mobile { flex-direction: column; padding: 12px; gap: 8px; }
