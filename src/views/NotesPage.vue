@@ -540,9 +540,17 @@ async function onDrop(e: DragEvent, targetNote: any) {
   display: flex; align-items: center; gap: 2px;
   padding: 6px 8px 4px;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  white-space: nowrap;
 }
-.md-toolbar .tool-btn { width: 30px; height: 30px; opacity: 0.5; border-radius: 6px; }
+.md-toolbar::-webkit-scrollbar { height: 3px; }
+.md-toolbar::-webkit-scrollbar-thumb { background: rgba(var(--v-theme-on-surface), 0.15); border-radius: 3px; }
+.md-toolbar .tool-btn { width: 30px; height: 30px; opacity: 0.5; border-radius: 6px; flex-shrink: 0; }
 .md-toolbar .tool-btn:hover { opacity: 1; background: rgba(var(--v-theme-on-surface), 0.05); }
+.tool-sep { width: 1px; height: 20px; background: rgba(var(--v-theme-on-surface), 0.1); flex-shrink: 0; margin: 0 2px; }
 .search-border :deep(.v-field) { border-color: #424242 !important; }
 .side-card { border-color: #424242 !important; }
 .draft-indicator {
