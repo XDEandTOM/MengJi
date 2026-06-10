@@ -539,9 +539,9 @@ async function onDrop(e: DragEvent, targetNote: any) {
 .editor-toolbar .tool-btn { opacity: 0.5; border-radius: 6px; }
 .editor-toolbar .tool-btn:hover { opacity: 1; background: rgba(var(--v-theme-on-surface), 0.05); }
 .submit-btn { height: 30px; }
-.md-toolbar .tool-btn { width: 30px; height: 30px; opacity: 0.5; border-radius: 6px; flex-shrink: 0; }
+.md-toolbar .tool-btn { width: 34px; height: 34px; opacity: 0.5; border-radius: 6px; flex-shrink: 0; }
 .md-toolbar .tool-btn:hover { opacity: 1; background: rgba(var(--v-theme-on-surface), 0.05); }
-.tool-sep { width: 1px; height: 20px; background: rgba(var(--v-theme-on-surface), 0.1); flex-shrink: 0; margin: 0 2px; }
+.tool-sep { width: 1px; height: 22px; background: rgba(var(--v-theme-on-surface), 0.1); flex-shrink: 0; margin: 0 3px; }
 .search-border :deep(.v-field) { border-color: #424242 !important; }
 .side-card { border-color: #424242 !important; }
 .draft-indicator {
@@ -595,6 +595,7 @@ async function onDrop(e: DragEvent, targetNote: any) {
   .notes-layout.mobile { flex-direction: column; padding: 12px; gap: 8px; }
   .notes-layout.mobile .main-col { width: 100%; }
   .notes-layout.mobile .inline-textarea { min-height: 60px; padding: 12px 14px 8px; font-size: 0.9rem; }
+  .editor-toolbar .tool-btn { width: 28px; height: 28px; }
 }
 </style>
 
