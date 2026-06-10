@@ -13,6 +13,7 @@
 </p>
 
 <p align="center">
+  <a href="https://suisui.malaoer.top"><img src="https://img.shields.io/badge/🔗_在线预览-suisui.malaoer.top-1976D2?style=flat-square" alt="Live Demo"/></a>
   <a href="https://github.com/Linraintong/SuiSui/releases"><img src="https://img.shields.io/github/v/tag/Linraintong/SuiSui?style=flat-square" alt="Release"/></a>
   <a href="https://github.com/Linraintong/SuiSui/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Linraintong/SuiSui?style=flat-square" alt="License"/></a>
   <a href="https://github.com/Linraintong/SuiSui/commits/main"><img src="https://img.shields.io/github/last-commit/Linraintong/SuiSui?style=flat-square" alt="Last Commit"/></a>
@@ -28,6 +29,8 @@
 **碎碎 (SuiSui)** 是一个**单二进制部署**的轻量级备忘录应用。支持 Markdown 编辑、图片上传、Emoji 反应、标签分类、活动热力图、多用户权限和后台管理。前端 Vue 3 + 后端 Go 编译为**一个可执行文件**，开箱即用。
 
 > 「碎碎」—— 捕捉每一丝灵感碎片。
+>
+> 🔗 **在线预览：https://suisui.malaoer.top**
 
 ---
 
