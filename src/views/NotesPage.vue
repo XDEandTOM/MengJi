@@ -140,7 +140,7 @@ function insertQuote() { insertMd("\n> ","","引用") }
 function insertStrikethrough() { insertMd("~~","~~","删除线") }
 function insertHr() { insertMd("\n---\n","","") }
 function insertTable() { insertMd("\n| 列1 | 列2 | 列3 |\n| --- | --- | --- |\n| 内容 | 内容 | 内容 |","","") }
-function insertImage() { insertMd("![图片描述](",")","图片链接") }
+function insertTodo() { insertMd("\n- [ ] ","","待办事项") }
 function insertCodeBlock() { insertMd("\n```\n","\n```\n","代码块") }
 
 async function fetchDeletedNotes() {
@@ -412,7 +412,7 @@ async function onDrop(e: DragEvent, targetNote: any) {
             <span class="tool-sep" />
             <v-btn icon="mdi-format-quote-open" size="small" variant="text" class="tool-btn" @click="insertQuote" title="引用" />
             <v-btn icon="mdi-format-strikethrough-variant" size="small" variant="text" class="tool-btn" @click="insertStrikethrough" title="删除线" />
-            <v-btn icon="mdi-image-outline" size="small" variant="text" class="tool-btn" @click="insertImage" title="图片" />
+            <v-btn icon="mdi-format-list-checks" size="small" variant="text" class="tool-btn" @click="insertTodo" title="待办" />
             <span class="tool-sep" />
             <v-btn icon="mdi-code-braces" size="small" variant="text" class="tool-btn" @click="insertCodeBlock" title="代码块" />
             <v-btn icon="mdi-table" size="small" variant="text" class="tool-btn" @click="insertTable" title="表格" />
