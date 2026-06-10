@@ -24,7 +24,7 @@ const icpLink = "https://beian.miit.gov.cn/#/Integrated/index"
 const DRAFT_KEY = "suisui-draft"
 
 const inlineContent = ref("")
-const inlineTagsInput = ref("")
+const inlineTagsInput = ref<string[]>([])
 const showInlineTags = ref(false)
 const inlineUploading = ref(false)
 const inlineTextarea = ref<HTMLTextAreaElement | null>(null)
@@ -48,7 +48,7 @@ function restoreDraft() {
     if (!raw) return
     const draft = JSON.parse(raw)
     if (draft.content) inlineContent.value = draft.content
-    if (draft.tags) { inlineTagsInput.value = draft.tags; showInlineTags.value = true }
+    if (draft.tags) { inlineTagsInput.value = typeof draft.tags === "string" ? draft.tags.split(/[,，]/).map(t => t.trim()).filter(Boolean) : draft.tags; showInlineTags.value = true }
     if (draft.images?.length) uploadedImages.value = draft.images
     if (draft.editingId) editingNoteId.value = draft.editingId
   } catch {}
@@ -173,7 +173,7 @@ function onInlineKeydown(e: KeyboardEvent) {
 
 async function submitInline() {
   if ((!inlineContent.value.trim() && !uploadedImages.value.length) || !auth.isLoggedIn) return
-  const tags = inlineTagsInput.value.split(/[,，]/).map(t => t.trim()).filter(Boolean)
+  const tags = Array.isArray(inlineTagsInput.value) ? inlineTagsInput.value.map(t => t.trim()).filter(Boolean) : []
   let content = inlineContent.value
   for (const url of uploadedImages.value) content += "\n\n![](" + url + ")"
   if (editingNoteId.value) {
@@ -183,7 +183,7 @@ async function submitInline() {
     await store.addNote(content.trim(), tags, auth.userName)
   }
   inlineContent.value = ""
-  inlineTagsInput.value = ""
+  inlineTagsInput.value = []
   uploadedImages.value = []
   showInlineTags.value = false
   clearDraft()
@@ -272,7 +272,7 @@ function handleEdit(memo: any) {
   const text = memo.content.replace(imgRegex, (_m: string, url: string) => { urls.push(url); return "" })
   inlineContent.value = text.trim()
   uploadedImages.value = urls
-  inlineTagsInput.value = memo.tags?.join(", ") || ""
+  inlineTagsInput.value = memo.tags || []
   editingNoteId.value = memo.id
   showInlineTags.value = true
   nextTick(() => {
@@ -443,7 +443,7 @@ async function onDrop(e: DragEvent, targetNote: any) {
           </div>
           <v-expand-transition>
             <div v-if="showInlineTags" class="pa-3">
-              <v-text-field v-model="inlineTagsInput" label="标签（逗号分隔）" variant="outlined" hide-details density="compact" placeholder="vue, memos, md" />
+              <v-autocomplete v-model="inlineTagsInput" :items="allTags.map(t => t[0])" label="标签" variant="outlined" hide-details density="compact" placeholder="vue, memos, md" multiple chips closable-chips small-chips clearable @keydown.enter.prevent="() => {}" />
             </div>
           </v-expand-transition>
         </div>
