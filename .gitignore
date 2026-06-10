@@ -13,3 +13,6 @@ fix_chinese.py
 mobile-toolbar.png
 
 server-go/*.exe
+.codegraph/
+.reasonix/
+*.exe~
