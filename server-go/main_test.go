@@ -22,10 +22,10 @@ func setupTestDB(t *testing.T) {
 	// Create tables manually (initDB also does file I/O and PRAGMA).
 	tables := []string{
 		`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL, nickname TEXT DEFAULT '', avatar TEXT DEFAULT '', role TEXT DEFAULT 'user', created_at INTEGER DEFAULT 0, theme_color TEXT DEFAULT '#1976D2', app_icon TEXT DEFAULT '', salt TEXT DEFAULT '')`,
-		`CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY, content TEXT, created_at INTEGER, updated_at INTEGER, pinned INTEGER DEFAULT 0, tags TEXT DEFAULT '[]', username TEXT, avatar TEXT, nickname TEXT)`,
+		`CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY, content TEXT, created_at INTEGER, updated_at INTEGER, pinned INTEGER DEFAULT 0, tags TEXT DEFAULT '[]', username TEXT, avatar TEXT, nickname TEXT, pin_order INTEGER DEFAULT 0)`,
 		`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`,
 		`CREATE TABLE IF NOT EXISTS reactions (id TEXT, emoji TEXT, username TEXT, PRIMARY KEY (id, emoji, username))`,
-		`CREATE TABLE IF NOT EXISTS trash (id TEXT PRIMARY KEY, content TEXT, created_at INTEGER, updated_at INTEGER, pinned INTEGER DEFAULT 0, tags TEXT DEFAULT '[]', username TEXT, avatar TEXT, nickname TEXT, deleted_at INTEGER)`,
+		`CREATE TABLE IF NOT EXISTS trash (id TEXT PRIMARY KEY, content TEXT, created_at INTEGER, updated_at INTEGER, pinned INTEGER DEFAULT 0, tags TEXT DEFAULT '[]', username TEXT, avatar TEXT, nickname TEXT, deleted_at INTEGER, pin_order INTEGER DEFAULT 0)`,
 		`CREATE TABLE IF NOT EXISTS auth_tokens (token TEXT PRIMARY KEY, username TEXT, created_at INTEGER)`,
 	}
 	for _, tbl := range tables {
@@ -94,11 +94,11 @@ func TestAuthRegisterAndLogin(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("register returned %d: %s", w.Code, w.Body.String())
 	}
-	var regResp map[string]interface{}
+	var regResp authRegisterResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &regResp); err != nil {
 		t.Fatal(err)
 	}
-	if regResp["token"].(string) == "" {
+	if regResp.Token == "" {
 		t.Fatal("register should return a token")
 	}
 
@@ -112,11 +112,11 @@ func TestAuthRegisterAndLogin(t *testing.T) {
 	if w2.Code != http.StatusOK {
 		t.Fatalf("login returned %d: %s", w2.Code, w2.Body.String())
 	}
-	var loginResp map[string]interface{}
+	var loginResp authLoginResponse
 	if err := json.Unmarshal(w2.Body.Bytes(), &loginResp); err != nil {
 		t.Fatal(err)
 	}
-	if loginResp["token"].(string) == "" {
+	if loginResp.Token == "" {
 		t.Fatal("login should return a token")
 	}
 
@@ -152,9 +152,9 @@ func TestAuthVerify(t *testing.T) {
 	w := httptest.NewRecorder()
 	handleAPI(w, httptest.NewRequest("POST", "/api/auth/login",
 		strings.NewReader(`{"username":"verifyuser","password":"pass1234"}`)))
-	var loginResp map[string]interface{}
+	var loginResp authLoginResponse
 	json.Unmarshal(w.Body.Bytes(), &loginResp)
-	token := loginResp["token"].(string)
+	token := loginResp.Token
 
 	req.Header.Set("Authorization", "Bearer "+token)
 	w2 := httptest.NewRecorder()
@@ -163,9 +163,9 @@ func TestAuthVerify(t *testing.T) {
 	if w2.Code != http.StatusOK {
 		t.Fatalf("verify returned %d", w2.Code)
 	}
-	var verifyResp map[string]interface{}
+	var verifyResp authVerifyResponse
 	json.Unmarshal(w2.Body.Bytes(), &verifyResp)
-	if verifyResp["valid"] != true {
+	if !verifyResp.Valid {
 		t.Fatal("token should be valid")
 	}
 }
@@ -181,9 +181,9 @@ func TestNotesCRUD(t *testing.T) {
 	w := httptest.NewRecorder()
 	handleAPI(w, httptest.NewRequest("POST", "/api/auth/login",
 		strings.NewReader(`{"username":"noter","password":"pass1234"}`)))
-	var loginResp map[string]interface{}
+	var loginResp authLoginResponse
 	json.Unmarshal(w.Body.Bytes(), &loginResp)
-	token := loginResp["token"].(string)
+	token := loginResp.Token
 
 	authHeader := "Bearer " + token
 
@@ -208,13 +208,13 @@ func TestNotesCRUD(t *testing.T) {
 	if w3.Code != http.StatusOK {
 		t.Fatalf("list notes returned %d", w3.Code)
 	}
-	var notes []map[string]interface{}
+	var notes []noteResponse
 	json.Unmarshal(w3.Body.Bytes(), &notes)
 	if len(notes) != 1 {
 		t.Fatalf("expected 1 note, got %d", len(notes))
 	}
-	if notes[0]["content"] != "Hello World" {
-		t.Fatalf("unexpected content: %v", notes[0]["content"])
+	if notes[0].Content != "Hello World" {
+		t.Fatalf("unexpected content: %v", notes[0].Content)
 	}
 }
 
@@ -227,9 +227,9 @@ func TestNotesPagination(t *testing.T) {
 	w := httptest.NewRecorder()
 	handleAPI(w, httptest.NewRequest("POST", "/api/auth/login",
 		strings.NewReader(`{"username":"pager","password":"pass1234"}`)))
-	var loginResp map[string]interface{}
+	var loginResp authLoginResponse
 	json.Unmarshal(w.Body.Bytes(), &loginResp)
-	token := loginResp["token"].(string)
+	token := loginResp.Token
 	authHeader := "Bearer " + token
 
 	// Create 3 notes
@@ -247,7 +247,7 @@ func TestNotesPagination(t *testing.T) {
 	w2 := httptest.NewRecorder()
 	handleAPI(w2, req)
 
-	var notes []map[string]interface{}
+	var notes []noteResponse
 	json.Unmarshal(w2.Body.Bytes(), &notes)
 	if len(notes) != 1 {
 		t.Fatalf("expected 1 note with limit=1, got %d", len(notes))

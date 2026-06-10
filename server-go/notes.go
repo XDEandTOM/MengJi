@@ -39,7 +39,7 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 			return
 		}
 		defer rows.Close()
-		var notes []map[string]interface{}
+		var notes []noteResponse
 		var allIds []string
 		for rows.Next() {
 			var id, content, username, tags, avatar, nickname string
@@ -53,10 +53,10 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 			if err := json.Unmarshal([]byte(tags), &tagList); err != nil {
 				log.Printf("failed to parse tags from note %s: %v", id, err)
 			}
-			notes = append(notes, map[string]interface{}{
-				"id": id, "content": content, "createdAt": createdAt, "updatedAt": updatedAt,
-				"pinned": pinned == 1, "tags": tagList, "username": username,
-				"avatar": avatar, "nickname": nickname,
+			notes = append(notes, noteResponse{
+				ID: id, Content: content, CreatedAt: createdAt, UpdatedAt: updatedAt,
+				Pinned: pinned == 1, Tags: tagList, Username: username,
+				Avatar: avatar, Nickname: nickname,
 			})
 		}
 		if err := rows.Err(); err != nil {
@@ -65,17 +65,15 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 		}
 		// Batch-load reactions for all notes (N+1 → 2 queries)
 		reactionsMap := batchGetReactions(allIds)
-		for i, n := range notes {
-			id, _ := n["id"].(string)
-			if r, ok := reactionsMap[id]; ok {
-				n["reactions"] = r
+		for i := range notes {
+			if r, ok := reactionsMap[notes[i].ID]; ok {
+				notes[i].Reactions = r
 			} else {
-				n["reactions"] = map[string][]string{}
+				notes[i].Reactions = map[string][]string{}
 			}
-			notes[i] = n
 		}
 		if notes == nil {
-			notes = []map[string]interface{}{}
+			notes = []noteResponse{}
 		}
 		jsonResp(w, notes)
 
@@ -108,7 +106,7 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 			errResp(w, "备忘录创建失败", 500)
 			return
 		}
-		jsonResp(w, map[string]string{"success": "ok"})
+		jsonResp(w, successResponse{Success: "ok"})
 
 	case strings.Contains(path, "/upload") && r.Method == "POST":
 		if _, tokenValid := verifyToken(r); !tokenValid {
@@ -148,7 +146,7 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 			errResp(w, "文件写入失败", 500)
 			return
 		}
-		jsonResp(w, map[string]interface{}{"success": true, "url": "/uploads/" + name})
+		jsonResp(w, uploadResponse{Success: true, URL: "/uploads/" + name})
 
 	case strings.HasSuffix(path, "/react") && (r.Method == "POST" || r.Method == "DELETE"):
 		noteId := strings.TrimSuffix(strings.TrimPrefix(path, "/notes/"), "/react")
@@ -177,7 +175,7 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 				return
 			}
 		}
-		jsonResp(w, map[string]string{"success": "ok"})
+		jsonResp(w, successResponse{Success: "ok"})
 	case path == "/notes/reorder" && r.Method == "PATCH":
 		tokenUser, tokenValid := verifyToken(r)
 		if !tokenValid {
@@ -195,7 +193,7 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 				return
 			}
 		}
-		jsonResp(w, map[string]string{"success": "ok"})
+		jsonResp(w, successResponse{Success: "ok"})
 	default:
 		parts := strings.Split(strings.TrimPrefix(path, "/notes/"), "/")
 		if len(parts) == 1 && r.Method == "PUT" {
@@ -215,13 +213,14 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 				return
 			}
 			var owner string
-			db.QueryRow("SELECT username FROM notes WHERE id=?", parts[0]).Scan(&owner)
-			if owner == "" {
+			if err := db.QueryRow("SELECT username FROM notes WHERE id=?", parts[0]).Scan(&owner); err != nil {
 				errResp(w, "note not found", 404)
 				return
 			}
 			var callerRole string
-			db.QueryRow("SELECT role FROM users WHERE username=?", body.Username).Scan(&callerRole)
+			if err := db.QueryRow("SELECT role FROM users WHERE username=?", body.Username).Scan(&callerRole); err != nil {
+				log.Printf("failed to query caller role: %v", err)
+			}
 			if body.Username != owner && callerRole != "admin" {
 				errResp(w, "forbidden", 403)
 				return
@@ -235,7 +234,7 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 				errResp(w, "备忘录更新失败", 500)
 				return
 			}
-			jsonResp(w, map[string]string{"success": "ok"})
+			jsonResp(w, successResponse{Success: "ok"})
 		} else if len(parts) == 1 && r.Method == "DELETE" {
 			username := r.URL.Query().Get("username")
 			if username == "" {
@@ -249,13 +248,14 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 				return
 			}
 			var owner string
-			db.QueryRow("SELECT username FROM notes WHERE id=?", parts[0]).Scan(&owner)
-			if owner == "" {
+			if err := db.QueryRow("SELECT username FROM notes WHERE id=?", parts[0]).Scan(&owner); err != nil {
 				errResp(w, "note not found", 404)
 				return
 			}
 			var callerRole string
-			db.QueryRow("SELECT role FROM users WHERE username=?", username).Scan(&callerRole)
+			if err := db.QueryRow("SELECT role FROM users WHERE username=?", username).Scan(&callerRole); err != nil {
+				log.Printf("failed to query caller role: %v", err)
+			}
 			if username != owner && callerRole != "admin" {
 				errResp(w, "forbidden", 403)
 				return
@@ -275,7 +275,7 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 				errResp(w, "删除失败", 500)
 				return
 			}
-			jsonResp(w, map[string]string{"success": "ok"})
+			jsonResp(w, successResponse{Success: "ok"})
 		} else if len(parts) == 2 && parts[1] == "pin" && r.Method == "PATCH" {
 			_, tokenValid := verifyToken(r)
 			if !tokenValid {
@@ -286,7 +286,7 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 				errResp(w, "操作失败", 500)
 				return
 			}
-			jsonResp(w, map[string]string{"success": "ok"})
+			jsonResp(w, successResponse{Success: "ok"})
 		}
 	}
 }
@@ -310,7 +310,7 @@ func handleTrash(w http.ResponseWriter, r *http.Request, path string) {
 			return
 		}
 		defer rows.Close()
-		var items []map[string]interface{}
+		var items []trashItemResponse
 		for rows.Next() {
 			var id, content, uname, tags, avatar, nickname string
 			var createdAt, updatedAt, deletedAt int64
@@ -322,10 +322,10 @@ func handleTrash(w http.ResponseWriter, r *http.Request, path string) {
 			if err := json.Unmarshal([]byte(tags), &tagList); err != nil {
 				log.Printf("failed to parse tags from trash item %s: %v", id, err)
 			}
-			items = append(items, map[string]interface{}{
-				"id": id, "content": content, "createdAt": createdAt, "updatedAt": updatedAt,
-				"pinned": pinned == 1, "tags": tagList, "username": uname,
-				"avatar": avatar, "nickname": nickname, "deletedAt": deletedAt,
+			items = append(items, trashItemResponse{
+				ID: id, Content: content, CreatedAt: createdAt, UpdatedAt: updatedAt,
+				Pinned: pinned == 1, Tags: tagList, Username: uname,
+				Avatar: avatar, Nickname: nickname, DeletedAt: deletedAt,
 			})
 		}
 		if err := rows.Err(); err != nil {
@@ -333,7 +333,7 @@ func handleTrash(w http.ResponseWriter, r *http.Request, path string) {
 			return
 		}
 		if items == nil {
-			items = []map[string]interface{}{}
+			items = []trashItemResponse{}
 		}
 		jsonResp(w, items)
 		return
@@ -363,7 +363,7 @@ func handleTrash(w http.ResponseWriter, r *http.Request, path string) {
 			errResp(w, "恢复失败", 500)
 			return
 		}
-		jsonResp(w, map[string]string{"success": "ok"})
+		jsonResp(w, successResponse{Success: "ok"})
 		return
 	}
 	// DELETE /notes/:id/hard-delete?username=xxx
@@ -385,7 +385,7 @@ func handleTrash(w http.ResponseWriter, r *http.Request, path string) {
 			errResp(w, "not found", 404)
 			return
 		}
-		jsonResp(w, map[string]string{"success": "ok"})
+		jsonResp(w, successResponse{Success: "ok"})
 		return
 	}
 	errResp(w, "not found", 404)
@@ -443,7 +443,7 @@ func handleNotesExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer rows.Close()
-	var notes []map[string]interface{}
+	var notes []noteResponse
 	for rows.Next() {
 		var id, content, uname, tags, avatar, nickname string
 		var createdAt, updatedAt int64
@@ -453,10 +453,10 @@ func handleNotesExport(w http.ResponseWriter, r *http.Request) {
 		}
 		var tagList []string
 		json.Unmarshal([]byte(tags), &tagList)
-		notes = append(notes, map[string]interface{}{
-			"id": id, "content": content, "createdAt": createdAt, "updatedAt": updatedAt,
-			"pinned": pinned == 1, "tags": tagList, "username": uname,
-			"avatar": avatar, "nickname": nickname,
+		notes = append(notes, noteResponse{
+			ID: id, Content: content, CreatedAt: createdAt, UpdatedAt: updatedAt,
+			Pinned: pinned == 1, Tags: tagList, Username: uname,
+			Avatar: avatar, Nickname: nickname,
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -464,7 +464,7 @@ func handleNotesExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if notes == nil {
-		notes = []map[string]interface{}{}
+		notes = []noteResponse{}
 	}
 	data, _ := json.MarshalIndent(notes, "", "  ")
 	w.Header().Set("Content-Type", "application/json")
@@ -512,5 +512,5 @@ func handleNotesImport(w http.ResponseWriter, r *http.Request) {
 			imported++
 		}
 	}
-	jsonResp(w, map[string]int{"imported": imported})
+	jsonResp(w, importResponse{Imported: imported})
 }

@@ -4,6 +4,7 @@ dist/
 *.db
 *.db-wal
 *.db-shm
+uploads/
 server-go/server.exe
 server-go/meng.exe
 server-go/meng.exe~
@@ -16,3 +17,5 @@ server-go/*.exe
 .codegraph/
 .reasonix/
 *.exe~
+*.test
+reasonix.toml

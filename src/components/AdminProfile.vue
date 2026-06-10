@@ -51,9 +51,8 @@ async function savePassword() {
     if (result.error) return
     pwdOld.value = ""; pwdNew.value = ""; pwdConfirm.value = ""; showPwdDialog.value = false
     snackMsg.value = "密码已修改"; snackbar.value = true
-  } catch {}
+  } catch { console.warn("changePassword failed") }
 }
-
 async function exportNotes() {
   try {
     const res = await authFetch(`/api/notes/export?username=${auth.userName}`)

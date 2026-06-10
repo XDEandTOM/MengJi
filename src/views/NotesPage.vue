@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from "vue"
 import { useDisplay } from "vuetify"
-import { useNotesStore } from "@/stores/notes"
+import { useNotesStore, type Note } from "@/stores/notes"
 import { useAuthStore } from "@/stores/auth"
 import { authFetch } from "@/utils/api"
 import NoteCard from "@/components/NoteCard.vue"
@@ -33,25 +33,25 @@ const uploadedImages = ref<string[]>([])
 const editingNoteId = ref("")
 const zoomedUpload = ref("")
 const showTrash = ref(false)
-const deletedNotes = ref([])
+const deletedNotes = ref<Note[]>([])
 const hasDraft = computed(() => !!(inlineContent.value || uploadedImages.value.length))
 
 function saveDraft() {
   if (!auth.isLoggedIn) return
   const draft = { content: inlineContent.value, tags: inlineTagsInput.value, images: uploadedImages.value, editingId: editingNoteId.value }
-  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)) } catch {}
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)) } catch { console.warn("saveDraft failed") }
 }
 
 function restoreDraft() {
   try {
     const raw = localStorage.getItem(DRAFT_KEY)
     if (!raw) return
-    const draft = JSON.parse(raw)
+    const draft: { content?: string; tags?: string | string[]; images?: string[]; editingId?: string } = JSON.parse(raw)
     if (draft.content) inlineContent.value = draft.content
     if (draft.tags) { inlineTagsInput.value = typeof draft.tags === "string" ? draft.tags.split(/[,，]/).map(t => t.trim()).filter(Boolean) : draft.tags; showInlineTags.value = true }
     if (draft.images?.length) uploadedImages.value = draft.images
     if (draft.editingId) editingNoteId.value = draft.editingId
-  } catch {}
+  } catch { console.warn("restoreDraft failed") }
 }
 
 function clearDraft() {
@@ -122,7 +122,7 @@ const filteredNotes = computed(() => {
 })
 
 function insertMd(b: string, f: string, fb: string) {
-  const el = document.querySelector(".inline-textarea") as HTMLTextAreaElement | null
+  const el = inlineTextarea.value
   if (!el) { inlineContent.value += fb; return }
   const start = el.selectionStart, end = el.selectionEnd
   const t = inlineContent.value, sel = t.substring(start, end)
@@ -149,13 +149,13 @@ async function fetchDeletedNotes() {
     if (res.ok) {
       deletedNotes.value = await res.json()
     }
-  } catch { }
+  } catch { console.warn("deletedNotes fetch failed") }
 }
 async function restoreNote(id: string) {
   try {
     const res = await authFetch(`/api/notes/${id}/restore?username=${auth.userName}`,{method:"PATCH"})
     if (res.ok) { deletedNotes.value = deletedNotes.value.filter(n=>n.id!==id); await store.fetchNotes() }
-  } catch { }
+  } catch { console.warn("restoreNote failed") }
 }
 async function deleteForever(id: string) {
   try {
@@ -163,7 +163,7 @@ async function deleteForever(id: string) {
     if (res.ok) {
       deletedNotes.value = deletedNotes.value.filter(n => n.id !== id)
     }
-  } catch { }
+  } catch { console.warn("deleteForever failed") }
 }
 
 
@@ -188,8 +188,7 @@ async function submitInline() {
   showInlineTags.value = false
   clearDraft()
   nextTick(() => {
-    const el = document.querySelector('.inline-textarea') as HTMLTextAreaElement
-    if (el) { el.style.height = '' }
+    if (inlineTextarea.value) { inlineTextarea.value.style.height = '' }
   })
 }
 
@@ -265,7 +264,7 @@ function autoGrowTextarea(e: Event) {
   el.style.height = el.scrollHeight + "px"
 }
 
-function handleEdit(memo: any) {
+function handleEdit(memo: Note) {
   clearDraft()
   const imgRegex = /!\[.*?\]\((.+?)\)/g
   const urls: string[] = []
@@ -276,22 +275,21 @@ function handleEdit(memo: any) {
   editingNoteId.value = memo.id
   showInlineTags.value = true
   nextTick(() => {
-    const el = document.querySelector(".inline-textarea") as HTMLTextAreaElement
-    if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px" }
+    if (inlineTextarea.value) { inlineTextarea.value.style.height = "auto"; inlineTextarea.value.style.height = inlineTextarea.value.scrollHeight + "px" }
   })
-  document.querySelector(".inline-textarea")?.scrollIntoView({ behavior: "smooth" })
-  ;(document.querySelector(".inline-textarea") as HTMLTextAreaElement)?.focus()
+  inlineTextarea.value?.scrollIntoView({ behavior: "smooth" })
+  inlineTextarea.value?.focus()
 }
 
 // Drag-and-drop reorder for pinned notes
 const dragId = ref("")
 const dragOverId = ref("")
 
-function onDragStart(note: any) {
+function onDragStart(note: Note) {
   dragId.value = note.id
 }
 
-function onDragOver(e: DragEvent, note: any) {
+function onDragOver(e: DragEvent, note: Note) {
   if (note.id !== dragId.value && note.pinned) {
     e.preventDefault()
     dragOverId.value = note.id
@@ -302,7 +300,7 @@ function onDragLeave() {
   dragOverId.value = ""
 }
 
-async function onDrop(e: DragEvent, targetNote: any) {
+async function onDrop(e: DragEvent, targetNote: Note) {
   e.preventDefault()
   dragOverId.value = ""
   if (!dragId.value || dragId.value === targetNote.id) return
@@ -541,7 +539,6 @@ async function onDrop(e: DragEvent, targetNote: any) {
 .submit-btn { height: 30px; }
 .md-toolbar .tool-btn { width: 34px; height: 34px; opacity: 0.5; border-radius: 6px; flex-shrink: 0; }
 .md-toolbar .tool-btn:hover { opacity: 1; background: rgba(var(--v-theme-on-surface), 0.05); }
-.tool-sep { width: 1px; height: 22px; background: rgba(var(--v-theme-on-surface), 0.1); flex-shrink: 0; margin: 0 3px; }
 .search-border :deep(.v-field) { border-color: #424242 !important; }
 .side-card { border-color: #424242 !important; }
 .draft-indicator {

@@ -15,16 +15,8 @@ function getToken(): string {
 export function authFetch(url: string, options?: RequestInit): Promise<Response> {
   const token = getToken()
   if (token) {
-    options = options || {}
-    options.headers = { ...options.headers as Record<string, string> || {}, "Authorization": "Bearer " + token }
+    options = { ...options }
+    options.headers = { ...(options.headers as Record<string, string> | undefined), "Authorization": "Bearer " + token }
   }
   return fetch(url, options)
-}
-
-/** @deprecated Use authFetch instead. Appends token as URL query parameter. */
-export function addToken(url: string): string {
-  const token = getToken()
-  if (!token) return url
-  const sep = url.includes("?") ? "&" : "?"
-  return url + sep + "token=" + encodeURIComponent(token)
 }

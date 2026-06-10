@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
@@ -85,8 +86,8 @@ func uploadsDir() string {
 
 func initDB() {
 	dbPath := filepath.Join(dataDir, "suisui.db")
-	_, err := os.Stat(dbPath)
 	os.MkdirAll(filepath.Join(dataDir, "uploads"), 0755)
+	var err error
 	db, err = sql.Open("sqlite", dbPath)
 	if err != nil {
 		log.Fatal(err)
@@ -163,7 +164,23 @@ func generateSalt() string {
 	return hex.EncodeToString(b)
 }
 
+const hashIterations = 10000
+
 func hashPassword(pwd, salt string) string {
+	key := []byte(salt)
+	mac := hmac.New(sha256.New, key)
+	mac.Write([]byte(pwd))
+	b := mac.Sum(nil)
+	for i := 0; i < hashIterations; i++ {
+		mac.Reset()
+		mac.Write(b)
+		b = mac.Sum(nil)
+	}
+	return hex.EncodeToString(b)
+}
+
+// legacyHashPassword is the pre-v1.3.9 SHA256(password) — kept for migration.
+func legacyHashPassword(pwd, salt string) string {
 	h := sha256.Sum256([]byte(salt + pwd))
 	return hex.EncodeToString(h[:])
 }
@@ -225,5 +242,5 @@ func jsonResp(w http.ResponseWriter, data interface{}) {
 
 func errResp(w http.ResponseWriter, msg string, code int) {
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(map[string]string{"error": msg})
+	json.NewEncoder(w).Encode(errResponse{Error: msg})
 }

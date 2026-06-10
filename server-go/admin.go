@@ -16,7 +16,7 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer rows.Close()
-		s := map[string]string{"site_title": "", "allow_register": "true", "site_favicon": ""}
+		s := map[string]string{"site_title": "", "allow_register": "true", "site_favicon": "", "site_icp": ""}
 		for rows.Next() {
 			var k, v string
 			if err := rows.Scan(&k, &v); err != nil {
@@ -52,7 +52,7 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 			errResp(w, "设置保存失败", 500)
 			return
 		}
-		jsonResp(w, map[string]string{"success": "ok"})
+		jsonResp(w, successResponse{Success: "ok"})
 	}
 }
 
@@ -76,7 +76,7 @@ func handleAdmin(w http.ResponseWriter, r *http.Request, path string) {
 		if err := db.QueryRow("SELECT COUNT(*) FROM notes").Scan(&notes); err != nil {
 			log.Printf("failed to count notes: %v", err)
 		}
-		jsonResp(w, map[string]int{"totalUsers": users, "totalNotes": notes})
+		jsonResp(w, adminStatsResponse{TotalUsers: users, TotalNotes: notes})
 
 	case path == "/admin/users":
 		tokenUser, tokenValid := verifyToken(r)
@@ -85,7 +85,11 @@ func handleAdmin(w http.ResponseWriter, r *http.Request, path string) {
 			return
 		}
 		var callerRole string
-		db.QueryRow("SELECT role FROM users WHERE username=?", tokenUser).Scan(&callerRole)
+		if err := db.QueryRow("SELECT role FROM users WHERE username=?", tokenUser).Scan(&callerRole); err != nil {
+			log.Printf("failed to query caller role: %v", err)
+			errResp(w, "查询数据时发生错误", 500)
+			return
+		}
 		if callerRole != "admin" {
 			errResp(w, "forbidden", 403)
 			return
@@ -125,7 +129,7 @@ func handleAdmin(w http.ResponseWriter, r *http.Request, path string) {
 			return
 		}
 		defer rows.Close()
-		var users []map[string]interface{}
+		var userList []adminUserResponse
 		for rows.Next() {
 			var id int
 			var username, nickname, avatar, role string
@@ -134,19 +138,19 @@ func handleAdmin(w http.ResponseWriter, r *http.Request, path string) {
 			if err := rows.Scan(&id, &username, &nickname, &avatar, &role, &createdAt, &memoCount); err != nil {
 				continue
 			}
-			users = append(users, map[string]interface{}{
-				"id": id, "username": username, "nickname": nickname, "avatar": avatar,
-				"role": role, "createdAt": createdAt, "memoCount": memoCount,
+			userList = append(userList, adminUserResponse{
+				ID: id, Username: username, Nickname: nickname, Avatar: avatar,
+				Role: role, CreatedAt: createdAt, MemoCount: memoCount,
 			})
 		}
 		if err := rows.Err(); err != nil {
 			errResp(w, "查询数据时发生错误", 500)
 			return
 		}
-		if users == nil {
-			users = []map[string]interface{}{}
+		if userList == nil {
+			userList = []adminUserResponse{}
 		}
-		jsonResp(w, map[string]interface{}{"users": users, "total": total, "page": page, "perPage": perPage})
+		jsonResp(w, adminUserListResponse{Users: userList, Total: total, Page: page, PerPage: perPage})
 
 	default:
 		parts := strings.Split(strings.TrimPrefix(path, "/admin/users/"), "/")
@@ -174,7 +178,7 @@ func handleAdmin(w http.ResponseWriter, r *http.Request, path string) {
 				errResp(w, "删除用户失败", 500)
 				return
 			}
-			jsonResp(w, map[string]string{"success": "ok"})
+			jsonResp(w, successResponse{Success: "ok"})
 		}
 	}
 }

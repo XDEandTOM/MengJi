@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -19,21 +23,92 @@ func main() {
 	if port == "" {
 		port = "3001"
 	}
-	for i := 1; i < len(os.Args)-1; i++ {
+	for i := 1; i < len(os.Args); i++ {
 		switch os.Args[i] {
 		case "-port":
-			port = os.Args[i+1]
+			if i+1 < len(os.Args) {
+				port = os.Args[i+1]
+				i++
+			}
 		case "-data":
-			dataDir = os.Args[i+1]
+			if i+1 < len(os.Args) {
+				dataDir = os.Args[i+1]
+				i++
+			}
 		}
 	}
 	initDB()
 	initAdmin()
-	http.HandleFunc("/api/", handleAPI)
-	http.HandleFunc("/uploads/", handleUploads)
-	http.HandleFunc("/", handleStatic)
-	log.Println("Server on :" + port + " (data: " + dataDir + ")")
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+
+	// Build the handler chain
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/", handleAPI)
+	mux.HandleFunc("/uploads/", handleUploads)
+	mux.HandleFunc("/health", handleHealth)
+	mux.HandleFunc("/", handleStatic)
+
+	srv := &http.Server{
+		Addr:         ":" + port,
+		Handler:      loggingMiddleware(mux),
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// Start gracefully
+	go func() {
+		log.Printf("Server on :%s (data: %s)", port, dataDir)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen: %v", err)
+		}
+	}()
+
+	// Wait for signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+	log.Println("Server exited")
+}
+
+// loggingMiddleware logs each request with method, path, status and duration.
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		sw := &statusWriter{ResponseWriter: w, status: 200}
+		next.ServeHTTP(sw, r)
+		duration := time.Since(start)
+		if r.URL.Path != "/favicon.ico" {
+			log.Printf("%s %s %d %s", r.Method, r.URL.Path, sw.status, duration)
+		}
+	})
+}
+
+type statusWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *statusWriter) WriteHeader(status int) {
+	w.status = status
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func handleHealth(w http.ResponseWriter, r *http.Request) {
+	// Verify DB connectivity
+	var version int
+	err := db.QueryRow("SELECT COALESCE(MAX(version), 0) FROM schema_version").Scan(&version)
+	if err != nil {
+		jsonResp(w, healthResponse{Status: "error", Message: err.Error()})
+		return
+	}
+	jsonResp(w, healthResponse{Status: "ok", DBSchemaVersion: version})
 }
 
 func handleAPI(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +123,6 @@ func handleAPI(w http.ResponseWriter, r *http.Request) {
 	case strings.HasPrefix(path, "/auth/"):
 		handleAuth(w, r, path)
 	case strings.HasPrefix(path, "/notes"):
-		// Check for export/import endpoints
 		if path == "/notes/export" {
 			handleNotesExport(w, r)
 			return
@@ -57,7 +131,6 @@ func handleAPI(w http.ResponseWriter, r *http.Request) {
 			handleNotesImport(w, r)
 			return
 		}
-		// Check for trash endpoints first, then notes
 		if strings.HasSuffix(path, "/restore") || strings.HasSuffix(path, "/hard-delete") || path == "/notes/trash" {
 			handleTrash(w, r, path)
 			return

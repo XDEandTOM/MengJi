@@ -9,9 +9,22 @@ const API = "/api"
 const auth = useAuthStore()
 const emit = defineEmits<{ back: [] }>()
 
+interface AdminStats {
+  totalUsers: number
+  totalNotes: number
+}
+interface AdminUser {
+  id: number
+  username: string
+  nickname: string
+  role: string
+  memoCount: number
+  createdAt: number
+}
+
 const tab = ref("overview")
-const stats = ref<null | any>(null)
-const users = ref<any[]>([])
+const stats = ref<AdminStats | null>(null)
+const users = ref<AdminUser[]>([])
 const loading = ref(false)
 const deleting = ref<null | number>(null)
 
@@ -28,21 +41,21 @@ async function loadData() {
   loading.value = false
 }
 async function loadStats() {
-  try { const r = await authFetch(API + "/admin/stats"); if (r.ok) stats.value = await r.json() } catch {}
+  try { const r = await authFetch(API + "/admin/stats"); if (r.ok) stats.value = await r.json() } catch { console.warn("loadStats failed") }
 }
 const userPage = ref(1)
 const userTotal = ref(0)
 const userPerPage = ref(10)
 
 async function loadUsers() {
-  try { const r = await authFetch(API + "/admin/users?page=" + userPage.value + "&per_page=" + userPerPage.value); if (r.ok) { const d = await r.json(); users.value = d.users || []; userTotal.value = d.total || 0 } } catch {}
+  try { const r = await authFetch(API + "/admin/users?page=" + userPage.value + "&per_page=" + userPerPage.value); if (r.ok) { const d = await r.json(); users.value = d.users || []; userTotal.value = d.total || 0 } } catch { console.warn("loadUsers failed") }
 }
 function prevPage() { if (userPage.value > 1) { userPage.value--; loadUsers() } }
 function nextPage() { if (userPage.value * userPerPage.value < userTotal.value) { userPage.value++; loadUsers() } }
 async function deleteUser(id: number) {
   if (!confirm("确定删除？")) return
   deleting.value = id
-  try { await authFetch(API + "/admin/users/" + id, { method: "DELETE" }); await loadData() } catch {}
+  try { await authFetch(API + "/admin/users/" + id, { method: "DELETE" }); await loadData() } catch { console.warn("deleteUser failed") }
   deleting.value = null
 }
 function formatDate(ts: number) { return new Date(ts).toLocaleString("zh-CN") }

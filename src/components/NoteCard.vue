@@ -61,7 +61,7 @@ const groupLabels: Record<number, string> = { 0: "😊", 1: "🤝", 3: "🐻", 4
 
 const EMOJI_CATEGORIES = (() => {
   const cats = [0,1,3,4,5,6,7,8,9].map(g => ({ id: g, icon: groupLabels[g] || "?", list: [] as string[] }))
-  for (const e of (emojiRaw as any[])) {
+  for (const e of emojiRaw) {
     if (e.group === undefined || e.group === 2) continue
     const cat = cats.find(c => c.id === e.group)
     if (cat && e.unicode) cat.list.push(e.unicode)

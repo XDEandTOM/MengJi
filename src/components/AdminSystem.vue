@@ -27,7 +27,7 @@ async function loadSettings() {
       document.title = s.site_title || "碎碎"
       allowRegister.value = s.allow_register !== "false"
     }
-  } catch {}
+  } catch { console.warn("loadSettings failed") }
 }
 
 function openTitleDialog() { titleInput.value = siteTitle.value; showTitleDialog.value = true }
@@ -41,7 +41,7 @@ async function saveSiteTitle() {
     })
     document.title = siteTitle.value.trim() || "碎碎"
     snackMsg.value = "网站标题已保存"; snackbar.value = true; showTitleDialog.value = false
-  } catch {}
+  } catch { console.warn("saveSiteTitle failed") }
 }
 async function saveSiteIcp() {
   try {
@@ -50,7 +50,7 @@ async function saveSiteIcp() {
       body: JSON.stringify({ key: "site_icp", value: siteIcp.value.trim() })
     })
     snackMsg.value = "备案号已保存"; snackbar.value = true; showIcpDialog.value = false
-  } catch {}
+  } catch { console.warn("saveSiteIcp failed") }
 }
 async function toggleRegister(val: boolean) {
   try {
@@ -59,7 +59,7 @@ async function toggleRegister(val: boolean) {
       body: JSON.stringify({ key: "allow_register", value: val ? "true" : "false" })
     })
     snackMsg.value = val ? "已允许注册" : "已关闭注册"; snackbar.value = true
-  } catch {}
+  } catch { console.warn("toggleRegister failed") }
 }
 
 // Load on mount
@@ -88,7 +88,7 @@ loadSettings()
             <v-icon color="primary">mdi-account-plus</v-icon>
             <span class="text-body-2">允许新用户注册</span>
           </div>
-          <v-switch v-model="allowRegister" hide-details density="compact" @update:model-value="toggleRegister" color="primary" />
+          <v-switch v-model="allowRegister" hide-details density="compact" @update:model-value="(val: boolean | null) => toggleRegister(val ?? false)" color="primary" />
         </div>
         <v-divider />
         <div class="d-flex align-center justify-space-between">

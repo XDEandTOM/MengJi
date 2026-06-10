@@ -31,9 +31,20 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 		}
 		var storedPwd, role, salt string
 		err := db.QueryRow("SELECT password, role, salt FROM users WHERE username=?", body.Username).Scan(&storedPwd, &role, &salt)
-		if err != nil || !checkPassword(body.Password, storedPwd, salt) {
+		if err != nil {
 			errResp(w, "用户名或密码错误", 401)
 			return
+		}
+		if !checkPassword(body.Password, storedPwd, salt) {
+			// Fallback: legacy SHA256 hashing (pre-v1.3.9)
+			if legacyHashPassword(body.Password, salt) != storedPwd {
+				errResp(w, "用户名或密码错误", 401)
+				return
+			}
+			// Upgrade to new hash
+			newHash := hashPassword(body.Password, salt)
+			execSQLLog("UPDATE users SET password=? WHERE username=?", newHash, body.Username)
+			log.Printf("upgraded password hash for user %s", body.Username)
 		}
 		var avatar, nickname string
 		var themeColor string
@@ -46,7 +57,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 			errResp(w, "登录失败，请重试", 500)
 			return
 		}
-		jsonResp(w, map[string]interface{}{"username": body.Username, "avatar": avatar, "nickname": nickname, "role": role, "theme_color": themeColor, "token": token})
+		jsonResp(w, authLoginResponse{Username: body.Username, Avatar: avatar, Nickname: nickname, Role: role, ThemeColor: themeColor, Token: token})
 
 	case path == "/auth/register" && r.Method == "POST":
 		var body struct{ Username, Password string }
@@ -78,20 +89,20 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 			errResp(w, "注册失败，请重试", 500)
 			return
 		}
-		jsonResp(w, map[string]interface{}{"username": body.Username, "role": "user", "token": regToken})
+		jsonResp(w, authRegisterResponse{Username: body.Username, Role: "user", Token: regToken})
 
 	case path == "/auth/verify" && r.Method == "GET":
 		username := r.URL.Query().Get("username")
 		token := r.URL.Query().Get("token")
 		tokenUser, tokenValid := verifyToken(r)
 		if !tokenValid || tokenUser != username {
-			jsonResp(w, map[string]interface{}{"valid": false})
+			jsonResp(w, authVerifyResponse{Valid: false})
 			return
 		}
 		var avatar, nickname, role, themeColor string
 		err := db.QueryRow("SELECT avatar, nickname, role, theme_color FROM users WHERE username=?", username).Scan(&avatar, &nickname, &role, &themeColor)
 		if err != nil {
-			jsonResp(w, map[string]interface{}{"valid": false})
+			jsonResp(w, authVerifyResponse{Valid: false})
 			return
 		}
 		var dbToken string
@@ -101,7 +112,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 		if dbToken == "" {
 			dbToken = token
 		}
-		jsonResp(w, map[string]interface{}{"valid": true, "avatar": avatar, "nickname": nickname, "role": role, "theme_color": themeColor, "token": dbToken})
+		jsonResp(w, authVerifyResponse{Valid: true, Avatar: avatar, Nickname: nickname, Role: role, ThemeColor: themeColor, Token: dbToken})
 
 	case path == "/auth/avatar" && r.Method == "PATCH":
 		var body struct{ Username, Avatar string }
@@ -120,7 +131,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 		}
 		execSQLLog("UPDATE notes SET avatar=? WHERE username=?", body.Avatar, body.Username)
 		execSQLLog("UPDATE trash SET avatar=? WHERE username=?", body.Avatar, body.Username)
-		jsonResp(w, map[string]string{"success": "ok"})
+		jsonResp(w, successResponse{Success: "ok"})
 
 	case path == "/auth/nickname" && r.Method == "PATCH":
 		var body struct{ Username, Nickname string }
@@ -147,7 +158,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 		}
 		execSQLLog("UPDATE notes SET nickname=? WHERE username=?", body.Nickname, body.Username)
 		execSQLLog("UPDATE trash SET nickname=? WHERE username=?", body.Nickname, body.Username)
-		jsonResp(w, map[string]interface{}{"success": true, "nickname": body.Nickname})
+		jsonResp(w, authSuccessResponse{Success: true, Nickname: body.Nickname})
 
 	case path == "/auth/app-icon" && r.Method == "PATCH":
 		var body struct{ Username, AppIcon string }
@@ -164,7 +175,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 			errResp(w, "图标更新失败", 500)
 			return
 		}
-		jsonResp(w, map[string]string{"success": "ok"})
+		jsonResp(w, successResponse{Success: "ok"})
 
 	case path == "/auth/theme" && r.Method == "PATCH":
 		var body struct{ Username, Theme string }
@@ -181,7 +192,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 			errResp(w, "主题色更新失败", 500)
 			return
 		}
-		jsonResp(w, map[string]string{"success": "ok"})
+		jsonResp(w, successResponse{Success: "ok"})
 
 	case path == "/auth/password" && r.Method == "PATCH":
 		var body struct{ Username, OldPassword, NewPassword string }
@@ -208,7 +219,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 			errResp(w, "密码修改失败", 500)
 			return
 		}
-		jsonResp(w, map[string]string{"success": "ok"})
+		jsonResp(w, successResponse{Success: "ok"})
 
 	case path == "/auth/avatar/upload" && r.Method == "POST":
 		r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
@@ -249,6 +260,6 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 			errResp(w, "文件写入失败", 500)
 			return
 		}
-		jsonResp(w, map[string]interface{}{"success": true, "url": "/uploads/" + name})
+		jsonResp(w, uploadResponse{Success: true, URL: "/uploads/" + name})
 	}
 }

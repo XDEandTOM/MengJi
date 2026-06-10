@@ -97,7 +97,7 @@ async function reactToNote(id: string, emoji: string, uid?: string) {
         if (!note.reactions[emoji].includes(uid)) note.reactions[emoji].push(uid)
       }
     }
-  } catch { }
+  } catch { console.warn("store action failed") }
 }
 
 async function removeReaction(id: string, emoji: string, uid?: string) {
@@ -114,7 +114,7 @@ async function removeReaction(id: string, emoji: string, uid?: string) {
         if (note.reactions[emoji].length === 0) delete note.reactions[emoji]
       }
     }
-  } catch { }
+  } catch { console.warn("store action failed") }
 }
 
 return { notes, loaded, fetchNotes, addNote, updateNote, deleteNote, togglePin, reactToNote, removeReaction }
