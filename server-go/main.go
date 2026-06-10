@@ -38,6 +38,7 @@ func main() {
 
 func handleAPI(w http.ResponseWriter, r *http.Request) {
 	cors(w)
+	securityHeaders(w)
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(200)
 		return
@@ -99,6 +100,7 @@ func handleUploads(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleStatic(w http.ResponseWriter, r *http.Request) {
+	securityHeaders(w)
 	if r.URL.Path == "/" {
 		data, err := staticFiles.ReadFile("dist/index.html")
 		if err != nil {

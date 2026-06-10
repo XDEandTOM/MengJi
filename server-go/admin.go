@@ -12,7 +12,7 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		rows, err := db.Query("SELECT key, value FROM settings")
 		if err != nil {
-			errResp(w, err.Error(), 500)
+			errResp(w, "查询数据时发生错误", 500)
 			return
 		}
 		defer rows.Close()
@@ -59,9 +59,14 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 func handleAdmin(w http.ResponseWriter, r *http.Request, path string) {
 	switch {
 	case path == "/admin/stats":
-		_, tokenValid := verifyToken(r)
+		tokenUser, tokenValid := verifyToken(r)
 		if !tokenValid {
 			errResp(w, "unauthorized", 401)
+			return
+		}
+		var callerRole string
+		if err := db.QueryRow("SELECT role FROM users WHERE username=?", tokenUser).Scan(&callerRole); err != nil || callerRole != "admin" {
+			errResp(w, "forbidden", 403)
 			return
 		}
 		var users, notes int
@@ -108,7 +113,7 @@ func handleAdmin(w http.ResponseWriter, r *http.Request, path string) {
 		}
 		rows, err := db.Query("SELECT id, username, nickname, avatar, role, created_at FROM users ORDER BY id LIMIT ? OFFSET ?", perPage, offset)
 		if err != nil {
-			errResp(w, err.Error(), 500)
+			errResp(w, "查询数据时发生错误", 500)
 			return
 		}
 		defer rows.Close()

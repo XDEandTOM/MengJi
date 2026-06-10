@@ -35,7 +35,7 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 		}
 		rows, err := db.Query(query, args...)
 		if err != nil {
-			errResp(w, err.Error(), 500)
+			errResp(w, "查询数据时发生错误", 500)
 			return
 		}
 		defer rows.Close()
@@ -80,6 +80,11 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 		jsonResp(w, notes)
 
 	case path == "/notes" && r.Method == "POST":
+		tokenUser, tokenValid := verifyToken(r)
+		if !tokenValid {
+			errResp(w, "unauthorized", 401)
+			return
+		}
 		var n struct {
 			Id, Content, Username, Avatar, Nickname string
 			CreatedAt, UpdatedAt                    int64
@@ -87,6 +92,10 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 		}
 		if err := json.NewDecoder(r.Body).Decode(&n); err != nil {
 			errResp(w, "无效的请求数据", 400)
+			return
+		}
+		if n.Username == "" || n.Username != tokenUser {
+			errResp(w, "unauthorized", 401)
 			return
 		}
 		tagBytes, err := json.Marshal(n.Tags)
@@ -102,6 +111,10 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 		jsonResp(w, map[string]string{"success": "ok"})
 
 	case strings.Contains(path, "/upload") && r.Method == "POST":
+		if _, tokenValid := verifyToken(r); !tokenValid {
+			errResp(w, "unauthorized", 401)
+			return
+		}
 		r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 		if err := r.ParseMultipartForm(10 << 20); err != nil {
 			errResp(w, "文件过大，最大 10MB", 400)
@@ -137,13 +150,18 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 
 	case strings.HasSuffix(path, "/react") && (r.Method == "POST" || r.Method == "DELETE"):
 		noteId := strings.TrimSuffix(strings.TrimPrefix(path, "/notes/"), "/react")
+		uid, tokenValid := verifyToken(r)
+		if !tokenValid || uid == "" {
+			errResp(w, "unauthorized", 401)
+			return
+		}
 		var body struct{ Emoji, Username string }
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			errResp(w, "无效的请求数据", 400)
 			return
 		}
-		if body.Emoji == "" || body.Username == "" {
-			errResp(w, "emoji and username required", 400)
+		if body.Emoji == "" || body.Username == "" || body.Username != uid {
+			errResp(w, "invalid request", 400)
 			return
 		}
 		if r.Method == "POST" {
@@ -274,7 +292,7 @@ func handleTrash(w http.ResponseWriter, r *http.Request, path string) {
 		}
 		rows, err := db.Query("SELECT id, content, created_at, updated_at, pinned, tags, username, avatar, nickname, deleted_at FROM trash WHERE username=? ORDER BY deleted_at DESC", username)
 		if err != nil {
-			errResp(w, err.Error(), 500)
+			errResp(w, "查询数据时发生错误", 500)
 			return
 		}
 		defer rows.Close()
@@ -404,7 +422,7 @@ func handleNotesExport(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := db.Query("SELECT id, content, created_at, updated_at, pinned, tags, username, avatar, nickname FROM notes WHERE username=? ORDER BY created_at DESC", username)
 	if err != nil {
-		errResp(w, err.Error(), 500)
+		errResp(w, "查询数据时发生错误", 500)
 		return
 	}
 	defer rows.Close()
@@ -425,7 +443,7 @@ func handleNotesExport(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	if err := rows.Err(); err != nil {
-		errResp(w, err.Error(), 500)
+		errResp(w, "查询数据时发生错误", 500)
 		return
 	}
 	if notes == nil {
