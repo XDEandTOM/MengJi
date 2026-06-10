@@ -167,9 +167,15 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 			return
 		}
 		if r.Method == "POST" {
-			execSQL("INSERT OR IGNORE INTO reactions (id, emoji, username) VALUES (?, ?, ?)", noteId, body.Emoji, body.Username)
+			if err := execSQL("INSERT OR IGNORE INTO reactions (id, emoji, username) VALUES (?, ?, ?)", noteId, body.Emoji, body.Username); err != nil {
+				errResp(w, "操作失败", 500)
+				return
+			}
 		} else {
-			execSQL("DELETE FROM reactions WHERE id=? AND emoji=? AND username=?", noteId, body.Emoji, body.Username)
+			if err := execSQL("DELETE FROM reactions WHERE id=? AND emoji=? AND username=?", noteId, body.Emoji, body.Username); err != nil {
+				errResp(w, "操作失败", 500)
+				return
+			}
 		}
 		jsonResp(w, map[string]string{"success": "ok"})
 	case path == "/notes/reorder" && r.Method == "PATCH":
@@ -184,7 +190,10 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 			return
 		}
 		for i, id := range body.Order {
-			execSQL("UPDATE notes SET pin_order=? WHERE id=? AND username=?", i, id, tokenUser)
+			if err := execSQL("UPDATE notes SET pin_order=? WHERE id=? AND username=?", i, id, tokenUser); err != nil {
+				errResp(w, "排序失败", 500)
+				return
+			}
 		}
 		jsonResp(w, map[string]string{"success": "ok"})
 	default:
@@ -262,7 +271,10 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 				errResp(w, "删除失败", 500)
 				return
 			}
-			execSQL("DELETE FROM notes WHERE id=?", parts[0])
+			if err := execSQL("DELETE FROM notes WHERE id=?", parts[0]); err != nil {
+				errResp(w, "删除失败", 500)
+				return
+			}
 			jsonResp(w, map[string]string{"success": "ok"})
 		} else if len(parts) == 2 && parts[1] == "pin" && r.Method == "PATCH" {
 			_, tokenValid := verifyToken(r)
@@ -347,7 +359,10 @@ func handleTrash(w http.ResponseWriter, r *http.Request, path string) {
 			errResp(w, "恢复失败", 500)
 			return
 		}
-		execSQL("DELETE FROM trash WHERE id=?", noteId)
+		if err := execSQL("DELETE FROM trash WHERE id=?", noteId); err != nil {
+			errResp(w, "恢复失败", 500)
+			return
+		}
 		jsonResp(w, map[string]string{"success": "ok"})
 		return
 	}

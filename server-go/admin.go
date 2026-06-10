@@ -111,7 +111,15 @@ func handleAdmin(w http.ResponseWriter, r *http.Request, path string) {
 		if err := db.QueryRow("SELECT COUNT(*) FROM users").Scan(&total); err != nil {
 			log.Printf("failed to count users for pagination: %v", err)
 		}
-		rows, err := db.Query("SELECT id, username, nickname, avatar, role, created_at FROM users ORDER BY id LIMIT ? OFFSET ?", perPage, offset)
+		// Single query with LEFT JOIN — no N+1
+		rows, err := db.Query(`
+			SELECT u.id, u.username, u.nickname, u.avatar, u.role, u.created_at,
+			       COUNT(n.id) AS memo_count
+			FROM users u
+			LEFT JOIN notes n ON n.username = u.username
+			GROUP BY u.id
+			ORDER BY u.id LIMIT ? OFFSET ?
+		`, perPage, offset)
 		if err != nil {
 			errResp(w, "查询数据时发生错误", 500)
 			return
@@ -122,11 +130,10 @@ func handleAdmin(w http.ResponseWriter, r *http.Request, path string) {
 			var id int
 			var username, nickname, avatar, role string
 			var createdAt int64
-			if err := rows.Scan(&id, &username, &nickname, &avatar, &role, &createdAt); err != nil {
+			var memoCount int
+			if err := rows.Scan(&id, &username, &nickname, &avatar, &role, &createdAt, &memoCount); err != nil {
 				continue
 			}
-			var memoCount int
-			db.QueryRow("SELECT COUNT(*) FROM notes WHERE username=?", username).Scan(&memoCount)
 			users = append(users, map[string]interface{}{
 				"id": id, "username": username, "nickname": nickname, "avatar": avatar,
 				"role": role, "createdAt": createdAt, "memoCount": memoCount,
@@ -162,7 +169,7 @@ func handleAdmin(w http.ResponseWriter, r *http.Request, path string) {
 				errResp(w, "用户不存在", 404)
 				return
 			}
-			execSQL("DELETE FROM notes WHERE username=?", username)
+			execSQLLog("DELETE FROM notes WHERE username=?", username)
 			if _, err := db.Exec("DELETE FROM users WHERE id=?", parts[0]); err != nil {
 				errResp(w, "删除用户失败", 500)
 				return

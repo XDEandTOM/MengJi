@@ -121,8 +121,8 @@ const filteredNotes = computed(() => {
   return list
 })
 
-function insertMd(b,f,fb) {
-  const el = document.querySelector(".inline-textarea")
+function insertMd(b: string, f: string, fb: string) {
+  const el = document.querySelector(".inline-textarea") as HTMLTextAreaElement | null
   if (!el) { inlineContent.value += fb; return }
   const start = el.selectionStart, end = el.selectionEnd
   const t = inlineContent.value, sel = t.substring(start, end)
@@ -151,7 +151,7 @@ async function fetchDeletedNotes() {
     }
   } catch { }
 }
-async function restoreNote(id) {
+async function restoreNote(id: string) {
   try {
     const res = await authFetch(`/api/notes/${id}/restore?username=${auth.userName}`,{method:"PATCH"})
     if (res.ok) { deletedNotes.value = deletedNotes.value.filter(n=>n.id!==id); await store.fetchNotes() }

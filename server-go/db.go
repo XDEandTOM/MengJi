@@ -56,9 +56,19 @@ func resetLoginRateLimit(ip string) {
 var db *sql.DB
 var dataDir = "."
 
-// execSQL executes a statement and logs any error without returning it.
+// execSQL executes a statement and returns any error.
+// Use for user-facing operations where errors must be reported.
+func execSQL(query string, args ...interface{}) error {
+	_, err := db.Exec(query, args...)
+	if err != nil {
+		log.Printf("sql exec error: %s — %v", query, err)
+	}
+	return err
+}
+
+// execSQLLog executes a statement and logs any error without returning it.
 // Use for best-effort operations (cache, cleanup, startup).
-func execSQL(query string, args ...interface{}) {
+func execSQLLog(query string, args ...interface{}) {
 	if _, err := db.Exec(query, args...); err != nil {
 		log.Printf("sql exec error: %s — %v", query, err)
 	}
@@ -81,8 +91,8 @@ func initDB() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	execSQL("PRAGMA journal_mode=WAL")
-	execSQL("PRAGMA foreign_keys=ON")
+	execSQLLog("PRAGMA journal_mode=WAL")
+	execSQLLog("PRAGMA foreign_keys=ON")
 	tables := []string{
 		`CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY, applied_at INTEGER)`,
 		`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL, nickname TEXT DEFAULT '', avatar TEXT DEFAULT '', role TEXT DEFAULT 'user', created_at INTEGER DEFAULT 0)`,
@@ -112,23 +122,23 @@ func migrate() {
 		return
 	}
 	if version < 1 {
-		execSQL("INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (1, ?)", time.Now().UnixMilli())
+		execSQLLog("INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (1, ?)", time.Now().UnixMilli())
 		version = 1
 	}
 	if version < 2 {
-		execSQL("ALTER TABLE users ADD COLUMN theme_color TEXT DEFAULT '#1976D2'")
-		execSQL("ALTER TABLE users ADD COLUMN app_icon TEXT DEFAULT ''")
-		execSQL("ALTER TABLE users ADD COLUMN salt TEXT DEFAULT ''")
-		execSQL("CREATE INDEX IF NOT EXISTS idx_notes_username ON notes(username)")
-		execSQL("CREATE INDEX IF NOT EXISTS idx_notes_created_at ON notes(created_at)")
-		execSQL("CREATE INDEX IF NOT EXISTS idx_trash_username ON trash(username)")
-		execSQL("INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (2, ?)", time.Now().UnixMilli())
+		execSQLLog("ALTER TABLE users ADD COLUMN theme_color TEXT DEFAULT '#1976D2'")
+		execSQLLog("ALTER TABLE users ADD COLUMN app_icon TEXT DEFAULT ''")
+		execSQLLog("ALTER TABLE users ADD COLUMN salt TEXT DEFAULT ''")
+		execSQLLog("CREATE INDEX IF NOT EXISTS idx_notes_username ON notes(username)")
+		execSQLLog("CREATE INDEX IF NOT EXISTS idx_notes_created_at ON notes(created_at)")
+		execSQLLog("CREATE INDEX IF NOT EXISTS idx_trash_username ON trash(username)")
+		execSQLLog("INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (2, ?)", time.Now().UnixMilli())
 		version = 2
 	}
 	if version < 3 {
-		execSQL("ALTER TABLE notes ADD COLUMN pin_order INTEGER DEFAULT 0")
-		execSQL("ALTER TABLE trash ADD COLUMN pin_order INTEGER DEFAULT 0")
-		execSQL("INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (3, ?)", time.Now().UnixMilli())
+		execSQLLog("ALTER TABLE notes ADD COLUMN pin_order INTEGER DEFAULT 0")
+		execSQLLog("ALTER TABLE trash ADD COLUMN pin_order INTEGER DEFAULT 0")
+		execSQLLog("INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (3, ?)", time.Now().UnixMilli())
 		version = 3
 	}
 	log.Printf("Schema migrated to v%d", version)
@@ -141,7 +151,7 @@ func initAdmin() {
 	}
 	if count == 0 {
 		salt := generateSalt()
-		execSQL("INSERT INTO users (username, password, nickname, role, created_at, salt) VALUES (?, ?, ?, ?, ?, ?)",
+		execSQLLog("INSERT INTO users (username, password, nickname, role, created_at, salt) VALUES (?, ?, ?, ?, ?, ?)",
 			"admin", hashPassword("admin", salt), "Admin", "admin", time.Now().UnixMilli(), salt)
 		log.Println("Admin user created: admin / admin")
 	}
@@ -197,6 +207,15 @@ func securityHeaders(w http.ResponseWriter) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Frame-Options", "DENY")
 	w.Header().Set("Referrer-Policy", "no-referrer")
+	w.Header().Set("Content-Security-Policy",
+		"default-src 'self'; "+
+			"script-src 'self'; "+
+			"style-src 'self' 'unsafe-inline'; "+
+			"img-src 'self' data: blob:; "+
+			"font-src 'self'; "+
+			"connect-src 'self'; "+
+			"frame-ancestors 'none'; "+
+			"form-action 'self'")
 }
 
 func jsonResp(w http.ResponseWriter, data interface{}) {
