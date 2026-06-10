@@ -229,8 +229,8 @@ func securityHeaders(w http.ResponseWriter) {
 			"script-src 'self'; "+
 			"style-src 'self' 'unsafe-inline'; "+
 			"img-src 'self' data: blob:; "+
-			"font-src 'self'; "+
-			"connect-src 'self'; "+
+			"font-src 'self' data:; "+
+			"connect-src 'self' https://api.github.com; "+
 			"frame-ancestors 'none'; "+
 			"form-action 'self'")
 }

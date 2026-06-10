@@ -3,20 +3,22 @@ import { ref, computed, onMounted, watch } from "vue"
 import { marked } from "marked"
 import hljs from "highlight.js"
 import { useTheme } from "vuetify"
+import hljsDark from "highlight.js/styles/github-dark.min.css?url"
+import hljsLight from "highlight.js/styles/github.min.css?url"
 
 const theme = useTheme()
 const isDark = computed(() => theme.global.name.value === "dark")
 
 function loadHighlightTheme(dark: boolean) {
   const id = "hljs-theme"
-  let link = document.getElementById(id) as HTMLLinkElement
+  let link = document.getElementById(id) as HTMLLinkElement | null
   if (!link) {
     link = document.createElement("link")
     link.id = id
     link.rel = "stylesheet"
     document.head.appendChild(link)
   }
-  link.href = dark ? "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css"
+  link.href = dark ? hljsDark : hljsLight
 }
 
 onMounted(() => loadHighlightTheme(theme.global.name.value === "dark"))
