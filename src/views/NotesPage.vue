@@ -394,13 +394,15 @@ async function onDrop(e: DragEvent, targetNote: any) {
       <div v-if="auth.isLoggedIn" class="inline-editor mb-4">
         <div class="editor-box" @drop.prevent="onInlineDrop" @dragover.prevent>
           <div class="md-toolbar">
-            <v-btn icon="mdi-format-bold" size="x-small" variant="text" class="tool-btn" @click="insertBold" title="粗体" />
-            <v-btn icon="mdi-format-italic" size="x-small" variant="text" class="tool-btn" @click="insertItalic" title="斜体" />
-            <v-btn icon="mdi-format-header-pound" size="x-small" variant="text" class="tool-btn" @click="insertHeading" title="标题" />
-            <v-btn icon="mdi-code-tags" size="x-small" variant="text" class="tool-btn" @click="insertCode" title="代码" />
-            <v-btn icon="mdi-link-variant" size="x-small" variant="text" class="tool-btn" @click="insertLink" title="链接" />
-            <v-btn icon="mdi-format-list-bulleted" size="x-small" variant="text" class="tool-btn" @click="insertList" title="列表" />
-            <v-btn icon="mdi-format-quote-open" size="x-small" variant="text" class="tool-btn" @click="insertQuote" title="引用" />
+            <v-btn icon="mdi-format-bold" size="small" variant="text" class="tool-btn" @click="insertBold" title="粗体 (Ctrl+B)" />
+            <v-btn icon="mdi-format-italic" size="small" variant="text" class="tool-btn" @click="insertItalic" title="斜体 (Ctrl+I)" />
+            <span class="tool-sep" />
+            <v-btn icon="mdi-format-header-pound" size="small" variant="text" class="tool-btn" @click="insertHeading" title="标题" />
+            <v-btn icon="mdi-code-tags" size="small" variant="text" class="tool-btn" @click="insertCode" title="代码" />
+            <v-btn icon="mdi-link-variant" size="small" variant="text" class="tool-btn" @click="insertLink" title="链接" />
+            <span class="tool-sep" />
+            <v-btn icon="mdi-format-list-bulleted" size="small" variant="text" class="tool-btn" @click="insertList" title="列表" />
+            <v-btn icon="mdi-format-quote-open" size="small" variant="text" class="tool-btn" @click="insertQuote" title="引用" />
           </div>
           <textarea ref="inlineTextarea" v-model="inlineContent" class="inline-textarea"
             placeholder="写点什么呢.." rows="1" @keydown="onInlineKeydown" @paste="onInlinePaste" @input="autoGrowTextarea"></textarea>
@@ -413,15 +415,16 @@ async function onDrop(e: DragEvent, targetNote: any) {
             </div>
           </div>
           <div class="editor-toolbar">
-            <div class="d-flex align-center ga-1">
-              <v-btn icon="mdi-image-plus" size="x-small" variant="text" class="tool-btn" :loading="inlineUploading" @click="triggerInlineUpload" />
+            <div class="d-flex align-center ga-2">
+              <v-btn icon="mdi-image-plus" size="small" variant="text" class="tool-btn" :loading="inlineUploading" @click="triggerInlineUpload" />
               <input ref="inlineFileInput" type="file" accept="image/*" multiple hidden @change="onInlineUpload" />
-              <v-btn :icon="showInlineTags ? 'mdi-tag-off' : 'mdi-tag-outline'" size="x-small" variant="text" class="tool-btn" @click="showInlineTags = !showInlineTags" />
-              <v-btn icon="mdi-delete-outline" size="x-small" variant="text" class="tool-btn"
+              <span class="tool-sep-sm" />
+              <v-btn :icon="showInlineTags ? 'mdi-tag-off' : 'mdi-tag-outline'" size="small" variant="text" class="tool-btn" @click="showInlineTags = !showInlineTags" />
+              <v-btn icon="mdi-delete-outline" size="small" variant="text" class="tool-btn"
                 @click="showTrash = !showTrash; if(showTrash) fetchDeletedNotes()" />
             </div>
-            <v-btn color="primary" size="small" variant="flat" class="rounded-pill px-4 submit-btn" @click="submitInline">
-              <v-icon start size="x-small">mdi-send</v-icon>{{ editingNoteId ? "更新" : "发布" }}
+            <v-btn color="primary" size="small" variant="flat" class="rounded-pill submit-btn" @click="submitInline">
+              <v-icon start>mdi-send</v-icon>{{ editingNoteId ? "更新" : "发布" }}
             </v-btn>
           </div>
           <v-expand-transition>
@@ -445,11 +448,15 @@ async function onDrop(e: DragEvent, targetNote: any) {
           <span>{{ selectedDay }} 的备忘录</span>
           <v-btn icon="mdi-close" size="x-small" variant="text" @click="selectedDay = ''" />
         </div>
-        <div v-if="filteredNotes.length === 0" class="d-flex flex-column align-center justify-center py-16 text-medium-emphasis">
-          <p v-if="searchQuery || selectedTag || selectedDay" class="text-body-1 mb-1 font-weight-medium">没有找到匹配的备忘录</p>
-          <p v-else class="text-body-1 mb-1 font-weight-medium">还没有备忘录</p>
+        <div v-if="filteredNotes.length === 0" class="empty-state">
+          <div class="empty-icon-wrap">
+            <v-icon size="48" color="rgba(var(--v-theme-on-surface),0.12)">mdi-pencil-box-multiple-outline</v-icon>
+          </div>
+          <p v-if="searchQuery || selectedTag || selectedDay" class="text-body-1 font-weight-medium mb-1">没有找到匹配的备忘录</p>
+          <p v-else class="text-body-1 font-weight-medium mb-1">还没有备忘录</p>
+          <p v-if="!searchQuery && !selectedTag && !selectedDay" class="text-caption text-medium-emphasis">点击上方编辑框，写下你的第一段记忆吧 ✨</p>
         </div>
-        <div class="d-flex flex-column ga-3">
+        <div class="d-flex flex-column ga-4">
           <div v-for="note in filteredNotes" :key="note.id"
             :draggable="note.pinned && auth.isLoggedIn"
             @dragstart="onDragStart(note)"
@@ -478,7 +485,7 @@ async function onDrop(e: DragEvent, targetNote: any) {
 </template>
 
 <style scoped>
-.notes-layout { display: flex; gap: 24px; padding: 24px; max-width: 1200px; margin: 0 auto; align-items: flex-start; }
+.notes-layout { display: flex; gap: 28px; padding: 28px; max-width: 1200px; margin: 0 auto; align-items: flex-start; }
 .notes-layout.mobile { flex-direction: column; padding: 12px; gap: 12px; }
 .side-col { width: 280px; flex-shrink: 0; position: sticky; top: 24px; align-self: flex-start; }
 .notes-layout.mobile .side-col { display: none; }
@@ -493,13 +500,13 @@ async function onDrop(e: DragEvent, targetNote: any) {
 .inline-editor { width: 100%; }
 .editor-box {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  border-radius: 12px; overflow: hidden;
+  border-radius: 14px; overflow: hidden;
   transition: border-color 0.2s, box-shadow 0.2s;
   background: rgb(var(--v-theme-surface));
 }
 .editor-box:focus-within {
   border-color: rgba(var(--v-theme-primary), 0.3);
-  box-shadow: 0 2px 12px rgba(var(--v-theme-primary), 0.06);
+  box-shadow: 0 2px 16px rgba(var(--v-theme-primary), 0.08);
 }
 .inline-textarea {
   width: 100%; border: none; outline: none; resize: none;
@@ -512,22 +519,43 @@ async function onDrop(e: DragEvent, targetNote: any) {
   display: flex; align-items: center; justify-content: space-between;
   padding: 4px 8px 8px;
 }
-.tool-btn { opacity: 0.5; transition: opacity 0.2s; }
-.tool-btn:hover { opacity: 1; }
+.editor-toolbar .tool-btn { opacity: 0.5; border-radius: 6px; }
+.editor-toolbar .tool-btn:hover { opacity: 1; background: rgba(var(--v-theme-on-surface), 0.05); }
 .submit-btn { height: 30px; }
 .md-toolbar {
-  display: flex; align-items: center; gap: 0;
-  padding: 4px 8px 0;
+  display: flex; align-items: center; gap: 2px;
+  padding: 6px 8px 4px;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
-.md-toolbar .tool-btn { width: 28px; height: 28px; opacity: 0.5; }
-.md-toolbar .tool-btn:hover { opacity: 1; }
+.md-toolbar .tool-btn { width: 30px; height: 30px; opacity: 0.5; border-radius: 6px; }
+.md-toolbar .tool-btn:hover { opacity: 1; background: rgba(var(--v-theme-on-surface), 0.05); }
 .search-border :deep(.v-field) { border-color: #424242 !important; }
 .side-card { border-color: #424242 !important; }
 .draft-indicator {
   display: flex; align-items: center; gap: 4px;
   padding: 2px 12px 8px 12px;
   font-size: 0.7rem; color: rgba(var(--v-theme-warning), 0.7);
+}
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 48px 16px; gap: 8px;
+}
+.empty-icon-wrap {
+  width: 80px; height: 80px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  margin-bottom: 8px;
+}
+.tool-sep {
+  width: 1px; height: 20px;
+  background: rgba(var(--v-theme-on-surface), 0.1);
+  flex-shrink: 0;
+}
+.tool-sep-sm {
+  width: 1px; height: 16px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  flex-shrink: 0;
 }
 .date-filter-bar {
   display: flex; align-items: center; gap: 8px;

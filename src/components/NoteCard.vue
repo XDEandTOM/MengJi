@@ -166,38 +166,48 @@ function timeAgo(ts: number) {
 
 <style scoped>
 .memo-card {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  border-radius: 12px !important;
-  transition: all 0.25s ease;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  border-radius: 14px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
 }
 .memo-card:hover {
-  border-color: rgba(var(--v-theme-primary), 0.25);
-  box-shadow: 0 4px 16px rgba(var(--v-theme-primary), 0.08) !important;
-  transform: translateY(-1px);
+  border-color: rgba(var(--v-theme-primary), 0.2);
+  box-shadow: 0 6px 24px rgba(var(--v-theme-primary), 0.06), 0 2px 6px rgba(0,0,0,0.04) !important;
+  transform: translateY(-2px);
 }
 .memo-card.pinned {
   border-left: 3px solid rgb(var(--v-theme-primary));
-  background: rgba(var(--v-theme-primary), 0.02);
+  background: rgba(var(--v-theme-primary), 0.015);
 }
 .memo-content.not-owned :deep(input[type="checkbox"]) {
   pointer-events: none;
   opacity: 0.5;
 }
-.card-inner { padding: 12px; }
+.card-inner { padding: 14px; }
 .avatar-wrap {
-  width: 40px; height: 40px; flex-shrink: 0; overflow: hidden;
-  border-radius: 8px; background: rgb(var(--v-theme-primary));
+  width: 38px; height: 38px; flex-shrink: 0; overflow: hidden;
+  border-radius: 10px; background: rgb(var(--v-theme-primary));
+  box-shadow: 0 2px 8px rgba(var(--v-theme-primary), 0.15);
 }
-.avatar-img { border-radius: 8px; }
+.avatar-img { border-radius: 10px; }
 .avatar-fallback {
   width: 100%; height: 100%; display: flex; align-items: center;
   justify-content: center; color: #fff; font-size: 0.85rem; font-weight: 600;
 }
-.nickname { font-size: 1.25rem; font-weight: 500; line-height: 1.25; }
-.time { font-size: 0.7rem; color: rgba(var(--v-theme-on-surface), 0.5); line-height: 1; margin-top: 1px; }
-.action-btn { opacity: 0.5; transition: opacity 0.2s; }
-.memo-card:hover .action-btn { opacity: 1; }
+.nickname { font-size: 1.1rem; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; }
+.time { font-size: 0.68rem; color: rgba(var(--v-theme-on-surface), 0.45); line-height: 1; margin-top: 2px; }
+.action-btn {
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.15s;
+  transform: scale(0.9);
+}
+.memo-card:hover .action-btn {
+  opacity: 0.6;
+  transform: scale(1);
+}
+.action-btn:hover { opacity: 1 !important; }
 .tags-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .tag-chip-card { font-size: 0.7rem; height: 22px !important; }
 .reactions-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 8px; }

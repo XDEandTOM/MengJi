@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue"
+import { ref, onMounted, watch, computed } from "vue"
 import { useDisplay, useTheme } from "vuetify"
 import { useAuthStore } from "@/stores/auth"
 import NotesPage from "@/views/NotesPage.vue"
@@ -20,12 +20,14 @@ const THEME_KEY = "suisui-theme"
 
 const vuetifyTheme = useTheme()
 
+const displayName = computed(() => auth.userNickname?.trim() || auth.userName || "")
+const avatarLetter = computed(() => displayName.value.charAt(0).toUpperCase() || "?")
+
 onMounted(async () => {
   const saved = localStorage.getItem(THEME_KEY)
   await auth.init()
   await loadSiteTitle()
   applyThemeColor(auth.userThemeColor)
-  // Restore saved theme after Vuetify's theme system is fully ready
   if (saved === "dark" || saved === "light") vuetifyTheme.change(saved)
 })
 
@@ -61,7 +63,6 @@ watch(() => auth.userThemeColor, (color) => {
   if (color) applyThemeColor(color)
 })
 
-// Auto-persist theme whenever it changes
 watch(() => vuetifyTheme.global.name.value, (val) => {
   if (val === "light" || val === "dark") localStorage.setItem(THEME_KEY, val)
 }, { immediate: false })
@@ -77,12 +78,21 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
     <div v-if="!isMobile" class="sidebar">
       <div class="sidebar-top">
         <template v-if="auth.isLoggedIn && auth.userAppIcon">
-          <v-img :src="auth.userAppIcon" width="28" height="28" class="sidebar-icon-img" />
+          <v-img :src="auth.userAppIcon" width="28" height="28" class="sidebar-app-icon" />
         </template>
         <template v-else>
           <AppLogo :size="28" />
         </template>
       </div>
+
+      <!-- User avatar & name in sidebar -->
+      <div v-if="auth.ready && auth.isLoggedIn" class="sidebar-user">
+        <v-avatar size="36" color="primary" variant="tonal" class="sidebar-avatar">
+          <span class="sidebar-avatar-text">{{ avatarLetter }}</span>
+        </v-avatar>
+        <span class="sidebar-username">{{ displayName }}</span>
+      </div>
+
       <div class="sidebar-middle" />
       <div class="sidebar-bottom">
         <v-btn icon="mdi-theme-light-dark" variant="text" size="small" class="sidebar-btn" @click.stop="toggleTheme" />
@@ -135,7 +145,7 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
 
 <style>
 .main-bg { min-height: 100vh; background: rgb(var(--v-theme-background)); }
-.main-bg.has-sidebar { margin-left: 56px; }
+.main-bg.has-sidebar { margin-left: 64px; }
 .main-bg.has-bottom-bar { margin-left: 0; padding-bottom: 56px; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-thumb { background: rgba(var(--v-theme-on-surface), 0.15); border-radius: 3px; }
@@ -148,32 +158,62 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
   position: fixed;
   left: 0;
   top: 0;
-  width: 56px;
+  width: 64px;
   height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16px 0;
+  padding: 12px 0;
   border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   background: rgb(var(--v-theme-surface));
   z-index: 100;
+  gap: 4px;
 }
 .sidebar-top {
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 4px 0 8px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  width: 40px;
+}
+.sidebar-app-icon { border-radius: 8px; }
+.sidebar-user {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+}
+.sidebar-avatar {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.sidebar-avatar:hover { transform: scale(1.1); }
+.sidebar-avatar-text { font-size: 0.85rem; font-weight: 600; color: #fff; }
+.sidebar-username {
+  font-size: 0.6rem;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  max-width: 56px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
 }
 .sidebar-middle { flex: 1; }
 .sidebar-bottom {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-top: auto;
-  padding-bottom: 16px;
+  padding-bottom: 12px;
 }
-.sidebar-btn { opacity: 0.6; transition: opacity 0.2s; }
-.sidebar-btn:hover { opacity: 1; }
+.sidebar-btn {
+  opacity: 0.55;
+  transition: opacity 0.2s, transform 0.15s;
+}
+.sidebar-btn:hover { opacity: 1; transform: scale(1.1); }
 
 .mobile-bottom-bar {
   position: fixed;
@@ -193,6 +233,6 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
   gap: 4px;
 }
 .mobile-bar-icon { border-radius: 6px; }
-.mobile-bar-btn { opacity: 0.6; transition: opacity 0.2s; }
+.mobile-bar-btn { opacity: 0.55; transition: opacity 0.2s; }
 .mobile-bar-btn:active { opacity: 1; }
 </style>
