@@ -199,7 +199,7 @@ async function onInlineUpload(e: Event) {
     const fd = new FormData()
     fd.append("image", file)
     try {
-      const res = await fetch("/api/notes/upload", { method: "POST", body: fd })
+      const res = await authFetch("/api/notes/upload", { method: "POST", body: fd })
       const data = await res.json()
       if (data.success) uploadedImages.value.push(data.url)
       else alert(data.error || "上传失败")
@@ -220,7 +220,7 @@ async function onInlineDrop(e: DragEvent) {
     const fd = new FormData()
     fd.append("image", file)
     try {
-      const res = await fetch("/api/notes/upload", { method: "POST", body: fd })
+      const res = await authFetch("/api/notes/upload", { method: "POST", body: fd })
       const data = await res.json()
       if (data.success) uploadedImages.value.push(data.url)
       else alert(data.error || "上传失败")
@@ -242,7 +242,7 @@ async function onInlinePaste(e: ClipboardEvent) {
       const fd = new FormData()
       fd.append("image", file)
       try {
-        const res = await fetch("/api/notes/upload", { method: "POST", body: fd })
+        const res = await authFetch("/api/notes/upload", { method: "POST", body: fd })
         const data = await res.json()
         if (data.success) uploadedImages.value.push(data.url)
         else alert(data.error || "上传失败")
