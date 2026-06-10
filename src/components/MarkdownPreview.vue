@@ -206,6 +206,7 @@ function handleClick(e: MouseEvent) {
 .markdown-body :deep(.todo-item) {
   list-style: none;
   margin: 2px 0;
+  padding-left: 0;
 }
 .markdown-body :deep(.todo-label) {
   display: inline-flex;
