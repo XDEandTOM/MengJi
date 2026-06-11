@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from "vue"
+import { ref, onMounted, watch, computed, defineAsyncComponent } from "vue"
 import { useDisplay, useTheme } from "vuetify"
 import { useAuthStore } from "@/stores/auth"
 import NotesPage from "@/views/NotesPage.vue"
 
-import AdminPage from "@/views/AdminPage.vue"
+const AdminPage = defineAsyncComponent(() => import("@/views/AdminPage.vue"))
 import LoginDialog from "@/components/LoginDialog.vue"
 import AppLogo from "@/components/AppLogo.vue"
 import ShareView from "@/components/ShareView.vue"

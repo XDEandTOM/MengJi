@@ -1,10 +1,10 @@
 ﻿<script setup lang="ts">
-import { ref, onMounted, nextTick } from "vue"
+import { ref, onMounted, nextTick, defineAsyncComponent, watch } from "vue"
 import type { Note } from "@/stores/notes"
 import { useNotesStore } from "@/stores/notes"
 import { useAuthStore } from "@/stores/auth"
-import MarkdownPreview from "./MarkdownPreview.vue"
-import emojiRaw from "emojibase-data/zh/compact.json"
+const MarkdownPreview = defineAsyncComponent(() => import("./MarkdownPreview.vue"))
+
 
 const props = defineProps<{ memo: Note; loggedIn: boolean; searchQuery?: string }>()
 const emit = defineEmits<{ edit: [memo: Note]; movePin: [note: Note, dir: "up" | "down"] }>()
@@ -53,6 +53,23 @@ function handleTodoToggle(idx: number) {
 }
 
 const showEmojiPicker = ref(false)
+const emojiCategories = ref<{ id: number; icon: string; list: string[] }[]>([])
+const groupLabels: Record<number, string> = { 0: "😊", 1: "🤝", 3: "🐻", 4: "🍔", 5: "🏠", 6: "⚽", 7: "💡", 8: "❤️", 9: "🚩" }
+const activeEmojiCat = ref(0)
+
+async function loadEmojiData() {
+  if (emojiCategories.value.length) return
+  const raw = (await import("emojibase-data/zh/compact.json")).default
+  const cats = [0,1,3,4,5,6,7,8,9].map(g => ({ id: g, icon: groupLabels[g] || "?", list: [] as string[] }))
+  for (const e of raw) {
+    if (e.group === undefined || e.group === 2) continue
+    const cat = cats.find(c => c.id === e.group)
+    if (cat && e.unicode) cat.list.push(e.unicode)
+  }
+  emojiCategories.value = cats
+}
+
+watch(showEmojiPicker, (v) => { if (v) loadEmojiData() })
 
 function getReactionUserId() {
   if (auth.isLoggedIn && auth.userName) return auth.userName
@@ -60,18 +77,7 @@ function getReactionUserId() {
   if (!gid) { gid = "guest_" + Date.now().toString(36) + Math.random().toString(36).slice(2,6); localStorage.setItem("suisui-guest", gid) }
   return gid
 }
-const groupLabels: Record<number, string> = { 0: "😊", 1: "🤝", 3: "🐻", 4: "🍔", 5: "🏠", 6: "⚽", 7: "💡", 8: "❤️", 9: "🚩" }
 
-const EMOJI_CATEGORIES = (() => {
-  const cats = [0,1,3,4,5,6,7,8,9].map(g => ({ id: g, icon: groupLabels[g] || "?", list: [] as string[] }))
-  for (const e of emojiRaw) {
-    if (e.group === undefined || e.group === 2) continue
-    const cat = cats.find(c => c.id === e.group)
-    if (cat && e.unicode) cat.list.push(e.unicode)
-  }
-  return cats
-})()
-const activeEmojiCat = ref(0)
 
 function hasReacted(emoji: string) {
   return props.memo.reactions?.[emoji]?.includes(getReactionUserId())
@@ -216,14 +222,14 @@ function copyShareLink() {
           </template>
           <div class="emoji-picker" style="width:280px">
             <div class="d-flex ga-1 pa-2" style="border-bottom:1px solid rgba(var(--v-theme-on-surface),0.08);overflow-x:auto">
-              <v-btn v-for="cat in EMOJI_CATEGORIES" :key="cat.id" size="x-small" variant="text"
+              <v-btn v-for="cat in emojiCategories" :key="cat.id" size="x-small" variant="text"
                 :class="['cat-btn', { active: activeEmojiCat === cat.id }]"
                 @click="activeEmojiCat = cat.id">
 {{ cat.icon }}
 </v-btn>
             </div>
             <div class="emoji-grid pa-2">
-              <v-btn v-for="(e, ei) in EMOJI_CATEGORIES.find(c => c.id === activeEmojiCat)?.list || []" :key="activeEmojiCat + '-' + ei"
+              <v-btn v-for="(e, ei) in emojiCategories.find(c => c.id === activeEmojiCat)?.list || []" :key="activeEmojiCat + '-' + ei"
                 size="x-small" variant="text" class="emoji-btn"
                 @click="toggleReaction(e); showEmojiPicker = false">
 {{ e }}

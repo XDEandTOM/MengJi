@@ -28,7 +28,6 @@ const DRAFT_KEY = "suisui-draft"
 const inlineContent = ref("")
 const inlineTagsInput = ref<string[]>([])
 const tagInput = ref("")
-const searchInput = ref<HTMLInputElement | null>(null)
 const showShortcuts = ref(false)
 function addTag() {
   const t = tagInput.value.trim()
