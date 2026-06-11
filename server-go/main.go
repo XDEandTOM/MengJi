@@ -18,6 +18,9 @@ import (
 //go:embed dist/*
 var staticFiles embed.FS
 
+// Version is set at build time via -ldflags, fallback to "dev" in local builds.
+var Version = "dev"
+
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -57,7 +60,7 @@ func main() {
 
 	// Start gracefully
 	go func() {
-		log.Printf("Server on :%s (data: %s)", port, dataDir)
+		log.Printf("Server %s on :%s (data: %s)", Version, port, dataDir)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %v", err)
 		}
@@ -102,13 +105,13 @@ func (w *statusWriter) WriteHeader(status int) {
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	// Verify DB connectivity
-	var version int
-	err := db.QueryRow("SELECT COALESCE(MAX(version), 0) FROM schema_version").Scan(&version)
+	var dbVer int
+	err := db.QueryRow("SELECT COALESCE(MAX(version), 0) FROM schema_version").Scan(&dbVer)
 	if err != nil {
 		jsonResp(w, healthResponse{Status: "error", Message: err.Error()})
 		return
 	}
-	jsonResp(w, healthResponse{Status: "ok", DBSchemaVersion: version})
+	jsonResp(w, healthResponse{Status: "ok", DBSchemaVersion: dbVer, Version: Version})
 }
 
 func handleAPI(w http.ResponseWriter, r *http.Request) {

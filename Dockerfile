@@ -1,6 +1,8 @@
 # ========== Build Stage ==========
 FROM golang:1.23-alpine AS builder
 
+ARG VERSION=dev
+
 WORKDIR /build
 
 COPY server-go/go.mod server-go/go.sum ./
@@ -8,7 +10,7 @@ RUN go mod download
 
 COPY server-go/ .
 
-RUN CGO_ENABLED=0 go build -o suisui .
+RUN CGO_ENABLED=0 go build -ldflags "-X main.Version=${VERSION}" -o suisui .
 
 # ========== Run Stage ==========
 FROM alpine:latest

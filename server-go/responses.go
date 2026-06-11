@@ -98,6 +98,7 @@ type successBoolResponse struct {
 type healthResponse struct {
 	Status          string `json:"status"`
 	DBSchemaVersion int    `json:"dbSchemaVersion"`
+	Version         string `json:"version"`
 	Message         string `json:"message,omitempty"`
 }
 
