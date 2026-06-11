@@ -74,13 +74,13 @@ function formatDate(ts: number) { return new Date(ts).toLocaleString("zh-CN") }
     </div>
 
     <v-tabs v-model="tab" color="primary" class="mb-4">
-      <v-tab value="overview" v-if="auth.isAdmin"><v-icon start size="small">mdi-view-dashboard</v-icon>概览</v-tab>
-      <v-tab value="system" v-if="auth.isAdmin"><v-icon start size="small">mdi-cog</v-icon>系统设置</v-tab>
-      <v-tab value="users" v-if="auth.isAdmin"><v-icon start size="small">mdi-account-group</v-icon>用户管理</v-tab>
+      <v-tab v-if="auth.isAdmin" value="overview"><v-icon start size="small">mdi-view-dashboard</v-icon>概览</v-tab>
+      <v-tab v-if="auth.isAdmin" value="system"><v-icon start size="small">mdi-cog</v-icon>系统设置</v-tab>
+      <v-tab v-if="auth.isAdmin" value="users"><v-icon start size="small">mdi-account-group</v-icon>用户管理</v-tab>
       <v-tab value="profile"><v-icon start size="small">mdi-account</v-icon>个人资料</v-tab>
     </v-tabs>
 
-    <template v-if='tab === "overview" && auth.isAdmin'>
+    <template v-if="tab === &quot;overview&quot; && auth.isAdmin">
       <v-card variant="outlined" class="rounded-xl pa-6 mb-4 stat-card">
         <h3 class="text-subtitle-1 font-weight-medium mb-4">网站概览</h3>
         <div class="d-flex align-center justify-space-between py-3">
@@ -101,11 +101,11 @@ function formatDate(ts: number) { return new Date(ts).toLocaleString("zh-CN") }
       </v-card>
     </template>
 
-    <template v-if='tab === "system" && auth.isAdmin'>
+    <template v-if="tab === &quot;system&quot; && auth.isAdmin">
       <AdminSystem />
     </template>
 
-    <template v-if='tab === "users" && auth.isAdmin'>
+    <template v-if="tab === &quot;users&quot; && auth.isAdmin">
       <v-card variant="outlined" class="rounded-xl pa-4 mb-4 stat-card">
         <h3 class="text-subtitle-1 font-weight-medium mb-4 px-2">用户管理</h3>
         <div v-if="loading" class="d-flex justify-center py-12">
@@ -140,11 +140,10 @@ function formatDate(ts: number) { return new Date(ts).toLocaleString("zh-CN") }
       </v-card>
     </template>
 
-    <template v-if='tab === "profile"'>
+    <template v-if="tab === &quot;profile&quot;">
       <AdminProfile />
     </template>
-
-  </v-container>
+</v-container>
 </template>
 
 <style scoped>

@@ -135,7 +135,13 @@ func handleAPI(w http.ResponseWriter, r *http.Request) {
 			handleTrash(w, r, path)
 			return
 		}
+		if strings.HasSuffix(path, "/share") && (r.Method == "POST" || r.Method == "DELETE") {
+			handleShareLink(w, r, path)
+			return
+		}
 		handleNotes(w, r, path)
+	case strings.HasPrefix(path, "/share/"):
+		handleShareView(w, r)
 	case strings.HasPrefix(path, "/settings"):
 		handleSettings(w, r)
 	case strings.HasPrefix(path, "/admin/"):

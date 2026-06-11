@@ -14,6 +14,10 @@ const auth = useAuthStore()
 const expanded = ref(false)
 const contentRef = ref<HTMLElement | null>(null)
 const isOverflow = ref(false)
+const showShareDialog = ref(false)
+const shareLink = ref("")
+const shareLoading = ref(false)
+const shareCopied = ref(false)
 
 onMounted(() => { nextTick(checkOverflow) })
 
@@ -93,6 +97,34 @@ function timeAgo(ts: number) {
   if (months < 12) return `${months} 个月前`
   return `${Math.floor(months / 12)} 年前`
 }
+
+async function shareNote() {
+  shareLoading.value = true
+  shareCopied.value = false
+  const result = await store.createShareLink(props.memo.id)
+  if (result) {
+    shareLink.value = window.location.origin + result.url
+    showShareDialog.value = true
+  } else {
+    alert("创建分享链接失败")
+  }
+  shareLoading.value = false
+}
+
+function copyShareLink() {
+  navigator.clipboard.writeText(shareLink.value).then(() => {
+    shareCopied.value = true
+    setTimeout(() => { shareCopied.value = false }, 2000)
+  })
+}
+
+async function revokeShare() {
+  if (await store.revokeShareLink(props.memo.id)) {
+    showShareDialog.value = false
+  } else {
+    alert("删除分享链接失败")
+  }
+}
 </script>
 
 <template>
@@ -121,6 +153,8 @@ function timeAgo(ts: number) {
             @click="store.togglePin(memo.id)" />
           <v-btn icon="mdi-delete" size="x-small" variant="text" color="error" class="action-btn"
             @click="store.deleteNote(memo.id, auth.userName)" />
+          <v-btn icon="mdi-share-variant" size="x-small" variant="text" class="action-btn"
+            @click="shareNote" />
         </div>
       </div>
       <div ref="contentRef" class="memo-content" :class="{ collapsed: !expanded && isOverflow, 'not-owned': (auth.isLoggedIn && memo.username !== auth.userName) || !auth.isLoggedIn }">
@@ -134,7 +168,9 @@ function timeAgo(ts: number) {
       </div>
       <div v-if="memo.tags && memo.tags.length" class="tags-row">
         <v-chip v-for="tag in memo.tags" :key="tag" size="x-small" variant="tonal"
-          color="primary" class="tag-chip-card">#{{ tag }}</v-chip>
+          color="primary" class="tag-chip-card">
+#{{ tag }}
+</v-chip>
       </div>
     
       <div class="reactions-row">
@@ -146,25 +182,54 @@ function timeAgo(ts: number) {
           </v-chip>
         </template>
         <v-menu v-model="showEmojiPicker" :close-on-content-click="false" location="top">
-          <template v-slot:activator="{ props }">
+          <template #activator="{ props: menuProps }">
             <v-btn icon="mdi-plus-circle-outline" size="x-small" variant="text"
-              class="reaction-add-btn" v-bind="props" />
+              class="reaction-add-btn" v-bind="menuProps" />
           </template>
           <div class="emoji-picker" style="width:280px">
             <div class="d-flex ga-1 pa-2" style="border-bottom:1px solid rgba(var(--v-theme-on-surface),0.08);overflow-x:auto">
               <v-btn v-for="cat in EMOJI_CATEGORIES" :key="cat.id" size="x-small" variant="text"
                 :class="['cat-btn', { active: activeEmojiCat === cat.id }]"
-                @click="activeEmojiCat = cat.id">{{ cat.icon }}</v-btn>
+                @click="activeEmojiCat = cat.id">
+{{ cat.icon }}
+</v-btn>
             </div>
             <div class="emoji-grid pa-2">
               <v-btn v-for="(e, ei) in EMOJI_CATEGORIES.find(c => c.id === activeEmojiCat)?.list || []" :key="activeEmojiCat + '-' + ei"
                 size="x-small" variant="text" class="emoji-btn"
-                @click="toggleReaction(e); showEmojiPicker = false">{{ e }}</v-btn>
+                @click="toggleReaction(e); showEmojiPicker = false">
+{{ e }}
+</v-btn>
             </div>
           </div>
         </v-menu>
-      </div></div>
+      </div>
+</div>
   </v-card>
+
+  <!-- Share dialog -->
+  <v-dialog v-model="showShareDialog" max-width="400" persistent>
+    <v-card class="rounded-xl pa-4">
+      <div class="d-flex align-center mb-3">
+        <span class="text-subtitle-2 font-weight-medium">分享笔记</span>
+        <v-spacer />
+        <v-btn icon="mdi-close" size="x-small" variant="text" @click="showShareDialog = false" />
+      </div>
+      <div class="d-flex align-center ga-2 mb-3">
+        <v-text-field v-model="shareLink" variant="outlined" hide-details density="compact" readonly
+          class="share-link-input" />
+        <v-btn :color="shareCopied ? 'success' : 'primary'" variant="flat" size="small" class="rounded-pill flex-shrink-0"
+          @click="copyShareLink">
+          <v-icon start>{{ shareCopied ? 'mdi-check' : 'mdi-content-copy' }}</v-icon>
+          {{ shareCopied ? '已复制' : '复制' }}
+        </v-btn>
+      </div>
+      <div class="text-caption text-medium-emphasis mb-2">任何拥有此链接的人都可以查看这条笔记</div>
+      <v-btn variant="text" color="error" size="small" @click="revokeShare">
+        <v-icon start>mdi-link-variant-off</v-icon>删除分享链接
+      </v-btn>
+    </v-card>
+  </v-dialog>
 </template>
 
 <style scoped>
@@ -231,6 +296,7 @@ function timeAgo(ts: number) {
 .cat-btn:hover { opacity:1; }
 .cat-btn.active { opacity:1; background: rgba(var(--v-theme-primary),0.1); }
 .emoji-grid { display: grid; grid-template-columns: repeat(7, 32px); gap: 4px; max-height: 280px; overflow-y: auto; }
+.share-link-input :deep(input) { font-size: 0.8rem !important; color: rgb(var(--v-theme-primary)); }
 
 .memo-content.collapsed {
   max-height: 300px;

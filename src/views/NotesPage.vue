@@ -7,14 +7,16 @@ import { authFetch } from "@/utils/api"
 import NoteCard from "@/components/NoteCard.vue"
 import Heatmap from "@/components/Heatmap.vue"
 
-const props = defineProps<{ mobileHeatmap: boolean }>()
+defineProps<{ mobileHeatmap: boolean }>()
 const emit = defineEmits<{ "close-heatmap": [] }>()
 
 const store = useNotesStore()
 const auth = useAuthStore()
 const { mobile } = useDisplay()
 const isMobile = mobile
-const searchQuery = ref("")
+
+// Simple local search input bound to store
+const localSearch = ref("")
 const selectedTag = ref("")
 const selectedDay = ref("")
 
@@ -44,6 +46,10 @@ const showTrash = ref(false)
 const deletedNotes = ref<Note[]>([])
 const hasDraft = computed(() => !!(inlineContent.value || uploadedImages.value.length))
 
+// Scroll sentinel
+const scrollSentinel = ref<HTMLDivElement | null>(null)
+let scrollObserver: IntersectionObserver | null = null
+
 function saveDraft() {
   if (!auth.isLoggedIn) return
   const draft = { content: inlineContent.value, tags: inlineTagsInput.value, images: uploadedImages.value, editingId: editingNoteId.value }
@@ -66,7 +72,6 @@ function clearDraft() {
   localStorage.removeItem(DRAFT_KEY)
 }
 
-// Auto-save draft on any editor input (debounced)
 let draftTimer: ReturnType<typeof setTimeout> | null = null
 watch([inlineContent, inlineTagsInput, uploadedImages, editingNoteId], () => {
   if (draftTimer) clearTimeout(draftTimer)
@@ -74,10 +79,43 @@ watch([inlineContent, inlineTagsInput, uploadedImages, editingNoteId], () => {
 }, { deep: true })
 
 onMounted(async () => {
-  await store.fetchNotes(); await loadSiteIcp(); fetchVersion()
+  await store.fetchNotes(true)
+  await loadSiteIcp()
+  fetchVersion()
   restoreDraft()
+  setupInfiniteScroll()
 })
-onBeforeUnmount(() => { zoomedUpload.value = "" })
+onBeforeUnmount(() => {
+  zoomedUpload.value = ""
+  if (scrollObserver) scrollObserver.disconnect()
+})
+
+function setupInfiniteScroll() {
+  if (scrollObserver) scrollObserver.disconnect()
+  scrollObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && store.hasMore && !store.loadingMore) {
+      store.fetchNotes(false)
+    }
+  }, { rootMargin: "400px" })
+  nextTick(() => {
+    if (scrollSentinel.value) scrollObserver?.observe(scrollSentinel.value)
+  })
+}
+
+// Reactive filter watchers — reset and re-fetch when filter changes
+watch([localSearch, selectedTag, selectedDay], () => {
+  store.searchQuery = localSearch.value
+  store.selectedTag = selectedTag.value
+  store.selectedDay = selectedDay.value
+  store.fetchNotes(true)
+  // Reconnect scroll observer after DOM update
+  nextTick(setupInfiniteScroll)
+})
+
+// Re-observe sentinel after notes change (e.g. after appending)
+watch(() => store.notes.length, () => {
+  nextTick(setupInfiniteScroll)
+})
 
 async function loadSiteIcp() {
   try {
@@ -100,34 +138,6 @@ async function fetchVersion() {
     }
   } catch { versionText.value = "" }
 }
-
-const allTags = computed(() => {
-  const tagCount = new Map()
-  for (const n of store.notes) {
-    if (n.tags && Array.isArray(n.tags)) for (const t of n.tags) tagCount.set(t, (tagCount.get(t) || 0) + 1)
-  }
-  return [...tagCount.entries()].sort((a, b) => b[1] - a[1])
-})
-
-const filteredNotes = computed(() => {
-  let list = store.notes
-  if (searchQuery.value && searchQuery.value.trim()) {
-    const q = searchQuery.value.toLowerCase()
-    list = list.filter(n => {
-      const text = (n.content || "").replace(/!\[.*?\]\(.+?\)/g, "").toLowerCase()
-      return text.includes(q) || (n.tags && Array.isArray(n.tags) && n.tags.some(t => t && t.toLowerCase().includes(q)))
-    })
-  }
-  if (selectedTag.value) list = list.filter(n => n.tags && Array.isArray(n.tags) && n.tags.includes(selectedTag.value))
-  if (selectedDay.value) {
-    list = list.filter(n => {
-      const d = new Date(n.createdAt)
-      const ds = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0")
-      return ds === selectedDay.value
-    })
-  }
-  return list
-})
 
 function insertMd(b: string, f: string, fb: string) {
   const el = inlineTextarea.value
@@ -154,26 +164,21 @@ function insertCodeBlock() { insertMd("\n```\n","\n```\n","代码块") }
 async function fetchDeletedNotes() {
   try {
     const res = await authFetch(`/api/notes/trash?username=${auth.userName}`)
-    if (res.ok) {
-      deletedNotes.value = await res.json()
-    }
+    if (res.ok) { deletedNotes.value = await res.json() }
   } catch { console.warn("deletedNotes fetch failed") }
 }
 async function restoreNote(id: string) {
   try {
     const res = await authFetch(`/api/notes/${id}/restore?username=${auth.userName}`,{method:"PATCH"})
-    if (res.ok) { deletedNotes.value = deletedNotes.value.filter(n=>n.id!==id); await store.fetchNotes() }
+    if (res.ok) { deletedNotes.value = deletedNotes.value.filter(n=>n.id!==id); await store.fetchNotes(true) }
   } catch { console.warn("restoreNote failed") }
 }
 async function deleteForever(id: string) {
   try {
     const res = await authFetch(`/api/notes/${id}/hard-delete?username=${auth.userName}`,{method:"DELETE"})
-    if (res.ok) {
-      deletedNotes.value = deletedNotes.value.filter(n => n.id !== id)
-    }
+    if (res.ok) { deletedNotes.value = deletedNotes.value.filter(n => n.id !== id) }
   } catch { console.warn("deleteForever failed") }
 }
-
 
 function onInlineKeydown(e: KeyboardEvent) {
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { submitInline(); return }
@@ -293,9 +298,8 @@ function handleEdit(memo: Note) {
   inlineTextarea.value?.focus()
 }
 
-// Move pinned note up/down
 async function movePinnedNote(note: Note, dir: "up" | "down") {
-  const pinned = filteredNotes.value.filter(n => n.pinned)
+  const pinned = store.notes.filter(n => n.pinned)
   const idx = pinned.findIndex(n => n.id === note.id)
   if (idx === -1) return
   const swap = idx + (dir === "up" ? -1 : 1)
@@ -307,7 +311,7 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ order }),
   })
-  await store.fetchNotes()
+  await store.fetchNotes(true)
 }
 </script>
 
@@ -315,7 +319,7 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
   <div class="notes-layout" :class="{ mobile: isMobile }">
     <div class="side-col">
       <div class="side-content">
-        <v-text-field v-model="searchQuery" prepend-inner-icon="mdi-magnify"
+        <v-text-field v-model="localSearch" prepend-inner-icon="mdi-magnify"
           label="搜索备忘..." variant="outlined" hide-details density="compact"
           clearable class="mb-3 rounded-search search-border" />
         <Heatmap class="mb-4" style="border-color:#424242 !important" @select-day="selectedDay = $event" />
@@ -324,17 +328,17 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
             <span class="text-subtitle-2 font-weight-medium">标签</span>
           </div>
           <div class="d-flex flex-wrap ga-1">
-            <v-chip v-for="[tag, count] in allTags" :key="tag" size="x-small" class="tag-chip"
-              @click="selectedTag = selectedTag === tag ? '' : tag"
+            <v-chip v-for="[tag] in store.allTags" :key="tag" size="x-small" class="tag-chip"
               color="primary"
-              :variant="selectedTag === tag ? 'flat' : 'outlined'">
+              :variant="selectedTag === tag ? 'flat' : 'outlined'"
+              @click="selectedTag = selectedTag === tag ? '' : tag">
               #{{ tag }}
             </v-chip>
-            <div v-if="!allTags.length" class="text-caption text-medium-emphasis py-2">暂无标签</div>
+            <div v-if="!store.allTags.length" class="text-caption text-medium-emphasis py-2">暂无标签</div>
           </div>
         </v-card>
         <div v-if="versionText" class="d-flex justify-center mt-2">
-          <v-chip size="x-small" variant="tonal" color="primary" class="version-chip" @click="openGithub" style="cursor:pointer" prepend-icon="mdi-github">
+          <v-chip size="x-small" variant="tonal" color="primary" class="version-chip" style="cursor:pointer" prepend-icon="mdi-github" @click="openGithub">
             {{ versionText }}
           </v-chip>
         </div>
@@ -349,21 +353,21 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
             <span class="text-subtitle-2 font-weight-medium">活动日历</span>
             <v-spacer /><v-btn icon="mdi-close" size="small" variant="text" @click="emit('close-heatmap')" />
           </div>
-          <v-text-field v-model="searchQuery" prepend-inner-icon="mdi-magnify" label="搜索备忘..." variant="outlined" hide-details density="compact" clearable class="mb-3 rounded-search search-border" />
+          <v-text-field v-model="localSearch" prepend-inner-icon="mdi-magnify" label="搜索备忘..." variant="outlined" hide-details density="compact" clearable class="mb-3 rounded-search search-border" />
           <Heatmap class="mb-4" style="border-color:#424242 !important" @select-day="selectedDay = $event; emit('close-heatmap')" />
           <v-card variant="outlined" class="rounded-xl pa-4 side-card">
             <div class="d-flex align-center ga-2 mb-3"><span class="text-subtitle-2 font-weight-medium">标签</span></div>
             <div class="d-flex flex-wrap ga-1">
-              <v-chip v-for="[tag, count] in allTags" :key="tag" size="x-small" class="tag-chip"
-                @click="selectedTag = selectedTag === tag ? '' : tag; emit('close-heatmap')"
-                color="primary" :variant="selectedTag === tag ? 'flat' : 'outlined'">
+              <v-chip v-for="[tag] in store.allTags" :key="tag" size="x-small" class="tag-chip"
+                color="primary"
+                :variant="selectedTag === tag ? 'flat' : 'outlined'" @click="selectedTag = selectedTag === tag ? '' : tag; emit('close-heatmap')">
                 #{{ tag }}
               </v-chip>
-              <div v-if="!allTags.length" class="text-caption text-medium-emphasis py-2">暂无标签</div>
+              <div v-if="!store.allTags.length" class="text-caption text-medium-emphasis py-2">暂无标签</div>
             </div>
           </v-card>
           <div v-if="versionText" class="d-flex justify-center mt-2">
-            <v-chip size="x-small" variant="tonal" color="primary" class="version-chip" @click="openGithub" style="cursor:pointer" prepend-icon="mdi-github">
+            <v-chip size="x-small" variant="tonal" color="primary" class="version-chip" style="cursor:pointer" prepend-icon="mdi-github" @click="openGithub">
               {{ versionText }}
             </v-chip>
           </div>
@@ -384,8 +388,8 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
               <div class="flex-grow-1 text-caption" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
                 {{ note.content?.replace(/!\[.*?\]\(.+?\)/g, "[图片]").substring(0, 60) }}
               </div>
-              <v-btn icon="mdi-restore" size="x-small" variant="text" color="primary" @click="restoreNote(note.id)" title="恢复" />
-              <v-btn icon="mdi-delete-forever" size="x-small" variant="text" color="error" @click="deleteForever(note.id)" title="永久删除" />
+              <v-btn icon="mdi-restore" size="x-small" variant="text" color="primary" title="恢复" @click="restoreNote(note.id)" />
+              <v-btn icon="mdi-delete-forever" size="x-small" variant="text" color="error" title="永久删除" @click="deleteForever(note.id)" />
             </div>
           </div>
         </v-card>
@@ -394,23 +398,23 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
       <div v-if="auth.isLoggedIn" class="inline-editor mb-4">
         <div class="editor-box" @drop.prevent="onInlineDrop" @dragover.prevent>
           <div class="md-toolbar">
-            <v-btn icon="mdi-format-bold" size="small" variant="text" class="tool-btn" @click="insertBold" title="粗体 (Ctrl+B)" />
-            <v-btn icon="mdi-format-italic" size="small" variant="text" class="tool-btn" @click="insertItalic" title="斜体 (Ctrl+I)" />
+            <v-btn icon="mdi-format-bold" size="small" variant="text" class="tool-btn" title="粗体 (Ctrl+B)" @click="insertBold" />
+            <v-btn icon="mdi-format-italic" size="small" variant="text" class="tool-btn" title="斜体 (Ctrl+I)" @click="insertItalic" />
             <span class="tool-sep" />
-            <v-btn icon="mdi-format-header-pound" size="small" variant="text" class="tool-btn" @click="insertHeading" title="标题" />
-            <v-btn icon="mdi-code-tags" size="small" variant="text" class="tool-btn" @click="insertCode" title="代码" />
-            <v-btn icon="mdi-link-variant" size="small" variant="text" class="tool-btn" @click="insertLink" title="链接" />
+            <v-btn icon="mdi-format-header-pound" size="small" variant="text" class="tool-btn" title="标题" @click="insertHeading" />
+            <v-btn icon="mdi-code-tags" size="small" variant="text" class="tool-btn" title="代码" @click="insertCode" />
+            <v-btn icon="mdi-link-variant" size="small" variant="text" class="tool-btn" title="链接" @click="insertLink" />
             <span class="tool-sep" />
-            <v-btn icon="mdi-format-list-bulleted" size="small" variant="text" class="tool-btn" @click="insertList" title="列表" />
-            <v-btn icon="mdi-format-list-numbered" size="small" variant="text" class="tool-btn" @click="insertOrderedList" title="有序列表" />
+            <v-btn icon="mdi-format-list-bulleted" size="small" variant="text" class="tool-btn" title="列表" @click="insertList" />
+            <v-btn icon="mdi-format-list-numbered" size="small" variant="text" class="tool-btn" title="有序列表" @click="insertOrderedList" />
             <span class="tool-sep" />
-            <v-btn icon="mdi-format-quote-open" size="small" variant="text" class="tool-btn" @click="insertQuote" title="引用" />
-            <v-btn icon="mdi-format-strikethrough-variant" size="small" variant="text" class="tool-btn" @click="insertStrikethrough" title="删除线" />
-            <v-btn icon="mdi-format-list-checks" size="small" variant="text" class="tool-btn" @click="insertTodo" title="待办" />
+            <v-btn icon="mdi-format-quote-open" size="small" variant="text" class="tool-btn" title="引用" @click="insertQuote" />
+            <v-btn icon="mdi-format-strikethrough-variant" size="small" variant="text" class="tool-btn" title="删除线" @click="insertStrikethrough" />
+            <v-btn icon="mdi-format-list-checks" size="small" variant="text" class="tool-btn" title="待办" @click="insertTodo" />
             <span class="tool-sep" />
-            <v-btn icon="mdi-code-braces" size="small" variant="text" class="tool-btn" @click="insertCodeBlock" title="代码块" />
-            <v-btn icon="mdi-table" size="small" variant="text" class="tool-btn" @click="insertTable" title="表格" />
-            <v-btn icon="mdi-minus" size="small" variant="text" class="tool-btn" @click="insertHr" title="分隔线" />
+            <v-btn icon="mdi-code-braces" size="small" variant="text" class="tool-btn" title="代码块" @click="insertCodeBlock" />
+            <v-btn icon="mdi-table" size="small" variant="text" class="tool-btn" title="表格" @click="insertTable" />
+            <v-btn icon="mdi-minus" size="small" variant="text" class="tool-btn" title="分隔线" @click="insertHr" />
           </div>
           <textarea ref="inlineTextarea" v-model="inlineContent" class="inline-textarea"
             placeholder="写点什么呢.." rows="1" @keydown="onInlineKeydown" @paste="onInlinePaste" @input="autoGrowTextarea"></textarea>
@@ -463,20 +467,29 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
           <span>{{ selectedDay }} 的碎片笔记</span>
           <v-btn icon="mdi-close" size="x-small" variant="text" @click="selectedDay = ''" />
         </div>
-        <div v-if="filteredNotes.length === 0" class="empty-state">
+        <div v-if="store.notes.length === 0" class="empty-state">
           <div class="empty-icon-wrap">
             <v-icon size="48" color="rgba(var(--v-theme-on-surface),0.12)">mdi-pencil-box-multiple-outline</v-icon>
           </div>
-          <p v-if="searchQuery || selectedTag || selectedDay" class="text-body-1 font-weight-medium mb-1">没有找到匹配的碎片笔记</p>
+          <p v-if="localSearch || selectedTag || selectedDay" class="text-body-1 font-weight-medium mb-1">没有找到匹配的碎片笔记</p>
           <p v-else class="text-body-1 font-weight-medium mb-1">还没有碎片笔记</p>
-          <p v-if="!searchQuery && !selectedTag && !selectedDay" class="text-caption text-medium-emphasis">点击上方编辑框，写下你的第一段记忆吧 ✨</p>
+          <p v-if="!localSearch && !selectedTag && !selectedDay" class="text-caption text-medium-emphasis">点击上方编辑框，写下你的第一段记忆吧 ✨</p>
         </div>
         <div class="d-flex flex-column ga-4">
-          <div v-for="note in filteredNotes" :key="note.id" class="note-drag-wrapper">
-            <NoteCard :memo="note" :search-query="searchQuery" :logged-in="auth.isLoggedIn" @edit="handleEdit" @move-pin="movePinnedNote" />
+          <div v-for="note in store.notes" :key="note.id" class="note-drag-wrapper">
+            <NoteCard :memo="note" :search-query="localSearch" :logged-in="auth.isLoggedIn" @edit="handleEdit" @move-pin="movePinnedNote" />
           </div>
         </div>
-            </template>
+        <!-- Infinite scroll sentinel -->
+        <div ref="scrollSentinel" class="scroll-sentinel">
+          <div v-if="store.loadingMore" class="d-flex justify-center py-4">
+            <v-progress-circular indeterminate size="24" color="primary" />
+          </div>
+          <div v-else-if="!store.hasMore && store.notes.length > 0" class="text-center text-caption py-4" style="opacity:0.4">
+            — 已显示全部 {{ store.total }} 条笔记 —
+          </div>
+        </div>
+      </template>
       <div v-if="siteIcp" class="text-center text-caption py-4 icp-text" style="opacity:0.6">
         <a :href="icpLink" target="_blank" rel="noopener" class="icp-link">{{ siteIcp }}</a>
       </div>
@@ -486,7 +499,7 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
   <teleport to="body">
     <div v-if="zoomedUpload" class="zoom-overlay" @click="zoomedUpload = ''">
       <button class="zoom-close-btn" @click.stop="zoomedUpload = ''">
-        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
       </button>
       <img :src="zoomedUpload" class="zoom-img" @click.stop />
     </div>
@@ -497,7 +510,6 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
 .notes-layout { display: flex; gap: 28px; padding: 28px; max-width: 1200px; margin: 0 auto; align-items: flex-start; }
 .md-toolbar { overflow-x: auto !important; overflow-y: hidden; white-space: nowrap !important; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
 .md-toolbar::-webkit-scrollbar { height: 3px; }
-.md-toolbar::-webkit-scrollbar-thumb { background: rgba(var(--v-theme-on-surface), 0.15); border-radius: 3px; }
 .notes-layout.mobile { flex-direction: column; padding: 12px; gap: 12px; }
 .side-col { width: 280px; flex-shrink: 0; position: sticky; top: 24px; align-self: flex-start; }
 .notes-layout.mobile .side-col { display: none; }
@@ -588,6 +600,9 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
   transition: opacity 0.15s, box-shadow 0.15s;
   border-radius: 12px;
 }
+.scroll-sentinel {
+  min-height: 40px;
+}
 
 @media (max-width: 768px) {
   .notes-layout.mobile { flex-direction: column; padding: 12px; gap: 8px; }
@@ -613,9 +628,3 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
 }
 .zoom-close-btn:hover { background: rgba(255,255,255,0.3); }
 </style>
-
-
-
-
-
-

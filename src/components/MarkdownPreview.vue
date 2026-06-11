@@ -120,11 +120,11 @@ function handleClick(e: MouseEvent) {
       if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
         return navigator.clipboard.writeText(text)
       }
-    } catch {}
+    } catch { /* clipboard API not supported */ }
     const ta = document.createElement("textarea")
     ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0"
     document.body.appendChild(ta); ta.select()
-    try { document.execCommand("copy") } catch {}
+    try { document.execCommand("copy") } catch { /* fallback failed */ }
     document.body.removeChild(ta)
     return Promise.resolve()
   }
@@ -139,11 +139,11 @@ function handleClick(e: MouseEvent) {
 </script>
 
 <template>
-  <div class="markdown-body" v-html="rendered" @click="handleClick" />
+  <div class="markdown-body" @click="handleClick" v-html="rendered" />
   <teleport to="body">
     <div v-if="zoomedImage" class="zoom-overlay" @click="zoomedImage = ''">
       <button class="zoom-close-btn" @click.stop="zoomedImage = ''">
-        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
       </button>
       <img :src="zoomedImage" class="zoom-img" @click.stop />
     </div>

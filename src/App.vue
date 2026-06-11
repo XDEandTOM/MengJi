@@ -7,6 +7,9 @@ import NotesPage from "@/views/NotesPage.vue"
 import AdminPage from "@/views/AdminPage.vue"
 import LoginDialog from "@/components/LoginDialog.vue"
 import AppLogo from "@/components/AppLogo.vue"
+import ShareView from "@/components/ShareView.vue"
+
+const isShareView = computed(() => window.location.pathname.startsWith("/share/"))
 
 const { mobile } = useDisplay()
 const isMobile = mobile
@@ -73,7 +76,8 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
 </script>
 
 <template>
-  <v-app>
+  <ShareView v-if="isShareView" />
+  <v-app v-else>
     <!-- Desktop sidebar -->
     <div v-if="!isMobile" class="sidebar">
       <div class="sidebar-top">

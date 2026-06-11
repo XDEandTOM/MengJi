@@ -48,8 +48,8 @@ function resetForm() {
 </script>
 
 <template>
-  <v-dialog :model-value="modelValue" @update:model-value="emit('update:modelValue', $event)"
-    max-width="400" persistent transition="dialog-bottom-transition">
+  <v-dialog :model-value="modelValue" max-width="400"
+    persistent transition="dialog-bottom-transition" @update:model-value="emit('update:modelValue', $event)">
     <v-card class="rounded-xl" rounded="xl">
       <v-card-title class="d-flex align-center pa-4 pb-0">
         <div class="d-flex align-center ga-2">
@@ -70,12 +70,16 @@ function resetForm() {
           </v-text-field>
           <v-text-field v-if="isRegister" v-model="loginConfirm" :type="showPwd ? 'text' : 'password'" label="确认密码" variant="outlined" density="comfortable" hide-details class="mb-3" prepend-inner-icon="mdi-lock-outline" />
           <v-btn type="submit" color="primary" variant="flat" size="large" block class="rounded-pill mt-2"
-            :disabled="isRegister && !allowRegister">{{ isRegister && !allowRegister ? '注册已关闭' : (isRegister ? '注册并登录' : '登录') }}</v-btn>
+            :disabled="isRegister && !allowRegister">
+{{ isRegister && !allowRegister ? '注册已关闭' : (isRegister ? '注册并登录' : '登录') }}
+</v-btn>
         </v-form>
       </v-card-text>
       <v-card-actions class="pa-4 pt-0 d-flex justify-center">
         <v-btn v-if="allowRegister" variant="text" size="small" class="text-caption text-medium-emphasis"
-          @click.stop="isRegister = !isRegister; loginError = ''">{{ isRegister ? '已有账号？去登录' : '没有账号？去注册' }}</v-btn>
+          @click.stop="isRegister = !isRegister; loginError = ''">
+{{ isRegister ? '已有账号？去登录' : '没有账号？去注册' }}
+</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

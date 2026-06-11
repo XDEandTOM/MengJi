@@ -12,28 +12,74 @@ import (
 	"time"
 )
 
+func buildNotesQuery(params map[string]string) (query string, countQuery string, args []interface{}) {
+	baseWhere := "WHERE 1=1"
+	var allArgs []interface{}
+
+	if search := params["search"]; search != "" {
+		baseWhere += " AND content LIKE ?"
+		allArgs = append(allArgs, "%"+search+"%")
+	}
+	if tag := params["tag"]; tag != "" {
+		baseWhere += " AND tags LIKE ?"
+		allArgs = append(allArgs, `%"`+tag+`"%`)
+	}
+	if date := params["date"]; date != "" {
+		baseWhere += " AND strftime('%Y-%m-%d', created_at / 1000, 'unixepoch') = ?"
+		allArgs = append(allArgs, date)
+	}
+	if username := params["username"]; username != "" {
+		baseWhere += " AND username = ?"
+		allArgs = append(allArgs, username)
+	}
+
+	orderBy := "ORDER BY pinned DESC, CASE WHEN pinned=1 THEN pin_order ELSE 0 END ASC, created_at DESC"
+	selectCols := "id, content, created_at, updated_at, pinned, tags, username, avatar, nickname"
+	countSQL := "SELECT COUNT(*) FROM notes " + baseWhere
+	dataSQL := "SELECT " + selectCols + " FROM notes " + baseWhere + " " + orderBy
+
+	return dataSQL, countSQL, allArgs
+}
+
 func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 	switch {
 	case path == "/notes" && r.Method == "GET":
+		q := r.URL.Query()
 		limit := 0
 		offset := 0
-		if l := r.URL.Query().Get("limit"); l != "" {
+		if l := q.Get("limit"); l != "" {
 			fmt.Sscanf(l, "%d", &limit)
 		}
-		if o := r.URL.Query().Get("offset"); o != "" {
+		if o := q.Get("offset"); o != "" {
 			fmt.Sscanf(o, "%d", &offset)
 		}
-		query := "SELECT id, content, created_at, updated_at, pinned, tags, username, avatar, nickname FROM notes ORDER BY pinned DESC, CASE WHEN pinned=1 THEN pin_order ELSE 0 END ASC, created_at DESC"
-		var args []interface{}
+
+		params := map[string]string{
+			"search":   q.Get("search"),
+			"tag":      q.Get("tag"),
+			"date":     q.Get("date"),
+			"username": q.Get("username"),
+		}
+		dataSQL, countSQL, args := buildNotesQuery(params)
+
+		// Get total count
+		var total int
+		if err := db.QueryRow(countSQL, args...).Scan(&total); err != nil {
+			log.Printf("count query failed: %v", err)
+			total = 0
+		}
+
+		// Apply pagination
 		if limit > 0 {
-			query += " LIMIT ?"
+			dataSQL += " LIMIT ?"
 			args = append(args, limit)
 			if offset > 0 {
-				query += " OFFSET ?"
+				dataSQL += " OFFSET ?"
 				args = append(args, offset)
 			}
 		}
-		rows, err := db.Query(query, args...)
+
+		rows, err := db.Query(dataSQL, args...)
 		if err != nil {
 			errResp(w, "查询数据时发生错误", 500)
 			return
@@ -63,7 +109,7 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 			errResp(w, "查询数据时发生错误", 500)
 			return
 		}
-		// Batch-load reactions for all notes (N+1 → 2 queries)
+		// Batch-load reactions for all notes
 		reactionsMap := batchGetReactions(allIds)
 		for i := range notes {
 			if r, ok := reactionsMap[notes[i].ID]; ok {
@@ -75,7 +121,12 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 		if notes == nil {
 			notes = []noteResponse{}
 		}
-		jsonResp(w, notes)
+		// When paginating, return object with total; otherwise return array (backward compat)
+		if limit > 0 {
+			jsonResp(w, paginatedNotesResponse{Notes: notes, Total: total, Limit: limit, Offset: offset})
+		} else {
+			jsonResp(w, notes)
+		}
 
 	case path == "/notes" && r.Method == "POST":
 		tokenUser, tokenValid := verifyToken(r)
@@ -513,4 +564,113 @@ func handleNotesImport(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	jsonResp(w, importResponse{Imported: imported})
+}
+
+// handleShareLink creates or retrieves a share link for a note.
+// POST /api/notes/:id/share
+func handleShareLink(w http.ResponseWriter, r *http.Request, path string) {
+	// Extract note id: /notes/<id>/share → split by "/"
+	parts := strings.Split(strings.TrimPrefix(path, "/notes/"), "/")
+	if len(parts) != 2 || parts[1] != "share" {
+		errResp(w, "not found", 404)
+		return
+	}
+	noteId := parts[0]
+
+	// Verify auth
+	tokenUser, tokenValid := verifyToken(r)
+	if !tokenValid {
+		errResp(w, "unauthorized", 401)
+		return
+	}
+
+	// Verify note ownership
+	var owner string
+	if err := db.QueryRow("SELECT username FROM notes WHERE id=?", noteId).Scan(&owner); err != nil {
+		errResp(w, "note not found", 404)
+		return
+	}
+	if tokenUser != owner {
+		var callerRole string
+		db.QueryRow("SELECT role FROM users WHERE username=?", tokenUser).Scan(&callerRole)
+		if callerRole != "admin" {
+			errResp(w, "forbidden", 403)
+			return
+		}
+	}
+
+	if r.Method == "POST" {
+		// Check if share link already exists
+		var existingToken string
+		err := db.QueryRow("SELECT token FROM share_links WHERE note_id=?", noteId).Scan(&existingToken)
+		if err == nil && existingToken != "" {
+			jsonResp(w, shareLinkResponse{
+				Token: existingToken, NoteID: noteId,
+				URL: "/share/" + existingToken,
+			})
+			return
+		}
+
+		// Generate new share token
+		token := generateToken()
+		if _, err := db.Exec("INSERT INTO share_links (token, note_id, created_at) VALUES (?, ?, ?)", token, noteId, time.Now().UnixMilli()); err != nil {
+			errResp(w, "创建分享链接失败", 500)
+			return
+		}
+		jsonResp(w, shareLinkResponse{
+			Token: token, NoteID: noteId, CreatedAt: time.Now().UnixMilli(),
+			URL: "/share/" + token,
+		})
+
+	} else if r.Method == "DELETE" {
+		if _, err := db.Exec("DELETE FROM share_links WHERE note_id=?", noteId); err != nil {
+			errResp(w, "删除分享链接失败", 500)
+			return
+		}
+		jsonResp(w, successResponse{Success: "ok"})
+	} else {
+		errResp(w, "method not allowed", 405)
+	}
+}
+
+// handleShareView returns a note by its share token (public, no auth).
+// GET /api/share/:token
+func handleShareView(w http.ResponseWriter, r *http.Request) {
+	token := strings.TrimPrefix(r.URL.Path, "/api/share/")
+	if token == "" {
+		errResp(w, "missing token", 400)
+		return
+	}
+
+	var noteId string
+	if err := db.QueryRow("SELECT note_id FROM share_links WHERE token=?", token).Scan(&noteId); err != nil {
+		errResp(w, "分享链接无效或已过期", 404)
+		return
+	}
+
+	var id, content, username, tags, avatar, nickname string
+	var createdAt, updatedAt int64
+	var pinned int
+	err := db.QueryRow("SELECT id, content, created_at, updated_at, pinned, tags, username, avatar, nickname FROM notes WHERE id=?", noteId).
+		Scan(&id, &content, &createdAt, &updatedAt, &pinned, &tags, &username, &avatar, &nickname)
+	if err != nil {
+		errResp(w, "笔记不存在", 404)
+		return
+	}
+
+	var tagList []string
+	json.Unmarshal([]byte(tags), &tagList)
+
+	// Load reactions
+	reactions := batchGetReactions([]string{noteId})
+	rMap := reactions[noteId]
+	if rMap == nil {
+		rMap = map[string][]string{}
+	}
+
+	jsonResp(w, noteResponse{
+		ID: id, Content: content, CreatedAt: createdAt, UpdatedAt: updatedAt,
+		Pinned: pinned == 1, Tags: tagList, Username: username,
+		Avatar: avatar, Nickname: nickname, Reactions: rMap,
+	})
 }

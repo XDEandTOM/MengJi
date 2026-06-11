@@ -102,6 +102,7 @@ func initDB() {
 		`CREATE TABLE IF NOT EXISTS reactions (id TEXT, emoji TEXT, username TEXT, PRIMARY KEY (id, emoji, username))`,
 		`CREATE TABLE IF NOT EXISTS trash (id TEXT PRIMARY KEY, content TEXT, created_at INTEGER, updated_at INTEGER, pinned INTEGER DEFAULT 0, tags TEXT DEFAULT '[]', username TEXT, avatar TEXT, nickname TEXT, deleted_at INTEGER)`,
 		`CREATE TABLE IF NOT EXISTS auth_tokens (token TEXT PRIMARY KEY, username TEXT, created_at INTEGER)`,
+		`CREATE TABLE IF NOT EXISTS share_links (token TEXT PRIMARY KEY, note_id TEXT NOT NULL, created_at INTEGER DEFAULT 0)`,
 	}
 	for _, t := range tables {
 		if _, err := db.Exec(t); err != nil {
@@ -111,7 +112,7 @@ func initDB() {
 	migrate()
 }
 
-const schemaVersion = 3
+const schemaVersion = 4
 
 func migrate() {
 	var version int
@@ -141,6 +142,11 @@ func migrate() {
 		execSQLLog("ALTER TABLE trash ADD COLUMN pin_order INTEGER DEFAULT 0")
 		execSQLLog("INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (3, ?)", time.Now().UnixMilli())
 		version = 3
+	}
+	if version < 4 {
+		execSQLLog("CREATE INDEX IF NOT EXISTS idx_share_links_note_id ON share_links(note_id)")
+		execSQLLog("INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (4, ?)", time.Now().UnixMilli())
+		version = 4
 	}
 	log.Printf("Schema migrated to v%d", version)
 }

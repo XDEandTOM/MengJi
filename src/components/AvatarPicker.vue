@@ -2,7 +2,7 @@
 import { ref, computed } from "vue"
 import { useAuthStore } from "@/stores/auth"
 import { authFetch } from "@/utils/api"
-const props = defineProps<{ modelValue: boolean }>()
+defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ "update:modelValue": [value: boolean] }>()
 const auth = useAuthStore()
 const uploading = ref(false)
@@ -61,7 +61,7 @@ function triggerUpload() {
 </script>
 
 <template>
-  <v-dialog :model-value="modelValue" @update:model-value="handleClose" max-width="420" persistent>
+  <v-dialog :model-value="modelValue" max-width="420" persistent @update:model-value="handleClose">
     <v-card class="rounded-xl" flat>
       <!-- Header -->
       <div class="d-flex align-center pa-4 pb-2">
@@ -98,8 +98,8 @@ function triggerUpload() {
           size="large"
           class="rounded-pill px-6"
           :loading="uploading"
-          @click="triggerUpload"
           prepend-icon="mdi-upload"
+          @click="triggerUpload"
         >
           选择图片
         </v-btn>

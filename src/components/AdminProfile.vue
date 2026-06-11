@@ -130,7 +130,7 @@ async function importNotes(e: Event) {
             <span class="text-body-2">主题色</span>
           </div>
           <div class="d-flex align-center ga-2">
-            <input type="color" :value="auth.userThemeColor" @input="onColorChange" class="theme-picker" />
+            <input type="color" :value="auth.userThemeColor" class="theme-picker" @input="onColorChange" />
             <v-btn size="small" variant="tonal" color="primary" @click="saveThemeColor">保存</v-btn>
           </div>
         </div>
@@ -166,7 +166,7 @@ async function importNotes(e: Event) {
       <v-card class="rounded-xl pa-4">
         <v-card-title class="text-subtitle-1 font-weight-medium px-0">修改昵称</v-card-title>
         <v-card-text class="px-0">
-          <v-text-field v-model="nickInput" variant="outlined" hide-details density="compact" placeholder="设置昵称" @keyup.enter="saveNickname" autofocus />
+          <v-text-field v-model="nickInput" variant="outlined" hide-details density="compact" placeholder="设置昵称" autofocus @keyup.enter="saveNickname" />
           <div v-if="nickError" class="text-caption text-error mt-1">{{ nickError }}</div>
         </v-card-text>
         <v-card-actions class="px-0">

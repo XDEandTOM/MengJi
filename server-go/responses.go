@@ -109,6 +109,20 @@ type importResponse struct {
 	Imported int `json:"imported"`
 }
 
+type paginatedNotesResponse struct {
+	Notes  []noteResponse `json:"notes"`
+	Total  int            `json:"total"`
+	Limit  int            `json:"limit"`
+	Offset int            `json:"offset"`
+}
+
+type shareLinkResponse struct {
+	Token     string `json:"token"`
+	NoteID    string `json:"noteId"`
+	CreatedAt int64  `json:"createdAt"`
+	URL       string `json:"url"`
+}
+
 type adminStatsResponse struct {
 	TotalUsers int `json:"totalUsers"`
 	TotalNotes int `json:"totalNotes"`

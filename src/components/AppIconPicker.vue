@@ -2,7 +2,7 @@
 import { ref, computed } from "vue"
 import { useAuthStore } from "@/stores/auth"
 import { authFetch } from "@/utils/api"
-const props = defineProps<{ modelValue: boolean }>()
+defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ "update:modelValue": [value: boolean] }>()
 const auth = useAuthStore()
 const uploading = ref(false)
@@ -48,7 +48,7 @@ function handleClose() {
 </script>
 
 <template>
-  <v-dialog :model-value="modelValue" @update:model-value="handleClose" max-width="420" persistent>
+  <v-dialog :model-value="modelValue" max-width="420" persistent @update:model-value="handleClose">
     <v-card class="rounded-xl" flat>
       <div class="d-flex align-center pa-4 pb-2">
         <span class="text-subtitle-1 font-weight-medium">应用图标</span>
@@ -66,7 +66,7 @@ function handleClose() {
             <v-progress-circular indeterminate size="32" color="white" />
           </div>
         </div>
-        <v-btn variant="outlined" color="primary" size="large" class="rounded-pill px-6" :loading="uploading" @click="triggerUpload" prepend-icon="mdi-upload">选择图片</v-btn>
+        <v-btn variant="outlined" color="primary" size="large" class="rounded-pill px-6" :loading="uploading" prepend-icon="mdi-upload" @click="triggerUpload">选择图片</v-btn>
         <input id="appicon-input" type="file" accept="image/*" hidden @change="onFileChange" />
         <span class="text-caption text-medium-emphasis">显示在侧边栏的应用图标，建议 128×128</span>
         <v-alert v-if="uploadError" density="compact" variant="tonal" type="error" class="w-100 rounded-lg">{{ uploadError }}</v-alert>

@@ -5,8 +5,7 @@
     "isolatedModules": true, "esModuleInterop": true, "lib": ["ESNext", "DOM"],
     "skipLibCheck": true, "noEmit": true,
     "forceConsistentCasingInFileNames": true, "paths": { "@/*": ["./src/*"] },
-    "baseUrl": ".",
-    "ignoreDeprecations": "6.0"
+    "baseUrl": "."
   },
   "include": ["src/**/*.ts", "src/**/*.vue"]
 }

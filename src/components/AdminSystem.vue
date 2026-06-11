@@ -88,7 +88,7 @@ loadSettings()
             <v-icon color="primary">mdi-account-plus</v-icon>
             <span class="text-body-2">允许新用户注册</span>
           </div>
-          <v-switch v-model="allowRegister" hide-details density="compact" @update:model-value="(val: boolean | null) => toggleRegister(val ?? false)" color="primary" />
+          <v-switch v-model="allowRegister" hide-details density="compact" color="primary" @update:model-value="(val: boolean | null) => toggleRegister(val ?? false)" />
         </div>
         <v-divider />
         <div class="d-flex align-center justify-space-between">
@@ -125,7 +125,7 @@ loadSettings()
       <v-card class="rounded-xl pa-4">
         <v-card-title class="text-subtitle-1 font-weight-medium px-0">修改网站标题</v-card-title>
         <v-card-text class="px-0">
-          <v-text-field v-model="titleInput" variant="outlined" hide-details density="compact" placeholder="网站标题" @keyup.enter="saveSiteTitle" autofocus />
+          <v-text-field v-model="titleInput" variant="outlined" hide-details density="compact" placeholder="网站标题" autofocus @keyup.enter="saveSiteTitle" />
         </v-card-text>
         <v-card-actions class="px-0">
           <v-spacer />
@@ -140,7 +140,7 @@ loadSettings()
       <v-card class="rounded-xl pa-4">
         <v-card-title class="text-subtitle-1 font-weight-medium px-0">修改备案号</v-card-title>
         <v-card-text class="px-0">
-          <v-text-field v-model="icpInput" variant="outlined" hide-details density="compact" placeholder="沪ICP备xxxxxxxx号" @keyup.enter="saveSiteIcp" autofocus />
+          <v-text-field v-model="icpInput" variant="outlined" hide-details density="compact" placeholder="沪ICP备xxxxxxxx号" autofocus @keyup.enter="saveSiteIcp" />
         </v-card-text>
         <v-card-actions class="px-0">
           <v-spacer />

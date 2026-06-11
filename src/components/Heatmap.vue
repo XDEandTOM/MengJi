@@ -90,7 +90,9 @@ function formatTooltip(day: number, count: number) {
               <div v-bind="tp" class="cal-cell day-cell" :class="[
                 getColor(cell.count),
                 { today: hasTodayInMonth && cell.day === new Date().getDate() }
-              ]" @click="cell.day > 0 && emit('select-day', currentYear + '-' + String(currentMonth + 1).padStart(2, '0') + '-' + String(cell.day).padStart(2, '0'))">{{ cell.day }}</div>
+              ]" @click="cell.day > 0 && emit('select-day', currentYear + '-' + String(currentMonth + 1).padStart(2, '0') + '-' + String(cell.day).padStart(2, '0'))">
+{{ cell.day }}
+</div>
             </template>
           </v-tooltip>
           <div v-else class="cal-cell day-cell empty-cell" />
