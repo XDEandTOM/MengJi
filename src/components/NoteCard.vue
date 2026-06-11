@@ -97,6 +97,35 @@ function timeAgo(ts: number) {
   return `${Math.floor(months / 12)} 年前`
 }
 
+function copyContent() {
+  const text = props.memo.content
+  navigator.clipboard.writeText(text).then(() => {
+    // Brief toast feedback via snackbar or just ignore
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement("textarea")
+    ta.value = text
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand("copy")
+    document.body.removeChild(ta)
+  })
+}
+
+function exportMarkdown() {
+  const content = props.memo.content
+  const tags = props.memo.tags?.length ? `\n\n标签：${props.memo.tags.join(", ")}` : ""
+  const meta = `---\n日期：${new Date(props.memo.createdAt).toLocaleDateString("zh-CN")}\n作者：${displayName(props.memo)}${tags}\n---\n\n`
+  const full = meta + content
+  const blob = new Blob([full], { type: "text/markdown" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `note-${props.memo.id}.md`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 function shareNote() {
   shareCopied.value = false
   shareLink.value = window.location.origin + "/share/" + props.memo.id
@@ -139,6 +168,21 @@ function copyShareLink() {
             @click="store.deleteNote(memo.id, auth.userName)" />
           <v-btn icon="mdi-share-variant" size="x-small" variant="text" class="action-btn"
             @click="shareNote" />
+          <v-menu location="bottom">
+            <template #activator="{ props }">
+              <v-btn icon="mdi-dots-horizontal" size="x-small" variant="text" class="action-btn" v-bind="props" />
+            </template>
+            <v-list density="compact" class="pa-1">
+              <v-list-item density="compact" @click="copyContent">
+                <template #prepend><v-icon size="small">mdi-content-copy</v-icon></template>
+                <v-list-item-title>复制内容</v-list-item-title>
+              </v-list-item>
+              <v-list-item density="compact" @click="exportMarkdown">
+                <template #prepend><v-icon size="small">mdi-file-download</v-icon></template>
+                <v-list-item-title>导出 Markdown</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
         </div>
       </div>
       <div ref="contentRef" class="memo-content" :class="{ collapsed: !expanded && isOverflow, 'not-owned': (auth.isLoggedIn && memo.username !== auth.userName) || !auth.isLoggedIn }">

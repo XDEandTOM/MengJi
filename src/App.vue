@@ -17,7 +17,10 @@ const isMobile = mobile
 const auth = useAuthStore()
 const showAdmin = ref(false)
 const showLogin = ref(false)
+const showProfile = ref(false)
 const showMobileHeatmap = ref(false)
+const nickEdit = ref("")
+const savingNick = ref(false)
 
 const THEME_KEY = "suisui-theme"
 
@@ -55,6 +58,19 @@ function toggleTheme() {
   vuetifyTheme.change(next)
 }
 
+function saveNickname() {
+  const n = nickEdit.value.trim()
+  if (!n || savingNick.value) return
+  savingNick.value = true
+  auth.updateNickname(n).then((err) => {
+    if (err) alert(err)
+    savingNick.value = false
+    showProfile.value = false
+  }).catch(() => { savingNick.value = false })
+}
+
+watch(showProfile, (v) => { if (v) nickEdit.value = auth.userNickname || "" })
+
 function applyThemeColor(color: string) {
   if (color && color !== "#1976D2") {
     vuetifyTheme.themes.value.light.colors.primary = color
@@ -91,7 +107,8 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
 
       <!-- User avatar & name in sidebar -->
       <div v-if="auth.ready && auth.isLoggedIn" class="sidebar-user">
-        <v-avatar size="36" color="primary" variant="tonal" class="sidebar-avatar">
+        <v-avatar size="36" color="primary" variant="tonal" class="sidebar-avatar" style="cursor:pointer"
+          @click="showProfile = true">
           <span class="sidebar-avatar-text">{{ avatarLetter }}</span>
         </v-avatar>
         <span class="sidebar-username">{{ displayName }}</span>
@@ -144,6 +161,21 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
       <v-progress-circular indeterminate color="primary" />
     </v-main>
     <LoginDialog v-model="showLogin" />
+    <v-dialog v-model="showProfile" max-width="420">
+      <v-card class="rounded-xl pa-4">
+        <div class="d-flex align-center mb-3">
+          <span class="text-subtitle-2 font-weight-medium">个人资料</span>
+          <v-spacer />
+          <v-btn icon="mdi-close" size="x-small" variant="text" @click="showProfile = false" />
+        </div>
+        <div class="d-flex flex-column ga-3">
+          <v-text-field v-model="nickEdit" label="昵称" variant="outlined" hide-details density="compact"
+            :disabled="savingNick" @keydown.enter="saveNickname" />
+          <v-btn color="primary" variant="flat" size="small" class="rounded-pill align-self-start"
+            :loading="savingNick" @click="saveNickname">保存昵称</v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
   </v-app>
 </template>
 

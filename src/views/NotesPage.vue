@@ -28,6 +28,8 @@ const DRAFT_KEY = "suisui-draft"
 const inlineContent = ref("")
 const inlineTagsInput = ref<string[]>([])
 const tagInput = ref("")
+const searchInput = ref<HTMLInputElement | null>(null)
+const showShortcuts = ref(false)
 function addTag() {
   const t = tagInput.value.trim()
   if (t && !inlineTagsInput.value.includes(t)) {
@@ -83,10 +85,12 @@ onMounted(async () => {
   fetchVersion()
   restoreDraft()
   setupInfiniteScroll()
+  document.addEventListener("keydown", handleGlobalKeydown)
 })
 onBeforeUnmount(() => {
   zoomedUpload.value = ""
   if (scrollObserver) scrollObserver.disconnect()
+  document.removeEventListener("keydown", handleGlobalKeydown)
 })
 
 function setupInfiniteScroll() {
@@ -295,6 +299,24 @@ function handleEdit(memo: Note) {
   inlineTextarea.value?.focus()
 }
 
+function handleGlobalKeydown(e: KeyboardEvent) {
+  // Don't override when typing in inputs
+  const tag = (e.target as HTMLElement)?.tagName
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return
+  if (e.ctrlKey || e.metaKey || e.altKey) return
+
+  if (e.key === "/") {
+    e.preventDefault()
+    // Focus search input
+    const searchEl = document.querySelector<HTMLInputElement>('[data-search-input] input')
+    searchEl?.focus()
+  } else if (e.key === "?") {
+    showShortcuts.value = !showShortcuts.value
+  } else if (e.key === "Escape" && showShortcuts.value) {
+    showShortcuts.value = false
+  }
+}
+
 async function movePinnedNote(note: Note, dir: "up" | "down") {
   const pinned = store.notes.filter(n => n.pinned)
   const idx = pinned.findIndex(n => n.id === note.id)
@@ -318,7 +340,7 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
       <div class="side-content">
         <v-text-field v-model="localSearch" prepend-inner-icon="mdi-magnify"
           label="搜索备忘..." variant="outlined" hide-details density="compact"
-          clearable class="mb-3 rounded-search search-border" />
+          clearable class="mb-3 rounded-search search-border" data-search-input />
         <Heatmap class="mb-4" style="border-color:#424242 !important" @select-day="selectedDay = $event" />
         <v-card variant="outlined" class="rounded-xl pa-4 side-card">
           <div class="d-flex align-center ga-2 mb-3">
@@ -498,6 +520,25 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
       <img :src="zoomedUpload" class="zoom-img" @click.stop />
     </div>
   </teleport>
+
+  <!-- Keyboard shortcuts dialog -->
+  <v-dialog v-model="showShortcuts" max-width="360">
+    <v-card class="rounded-xl pa-4">
+      <div class="d-flex align-center mb-3">
+        <span class="text-subtitle-2 font-weight-medium">⌨️ 快捷键</span>
+        <v-spacer />
+        <v-btn icon="mdi-close" size="x-small" variant="text" @click="showShortcuts = false" />
+      </div>
+      <div class="shortcut-list">
+        <div class="shortcut-row"><kbd>/</kbd><span>聚焦搜索</span></div>
+        <div class="shortcut-row"><kbd>?</kbd><span>显示此面板</span></div>
+        <div class="shortcut-row"><kbd>Ctrl + Enter</kbd><span>发布/更新笔记</span></div>
+        <div class="shortcut-row"><kbd>Ctrl + B</kbd><span>粗体</span></div>
+        <div class="shortcut-row"><kbd>Ctrl + I</kbd><span>斜体</span></div>
+        <div class="shortcut-row"><kbd>Escape</kbd><span>关闭面板</span></div>
+      </div>
+    </v-card>
+  </v-dialog>
 </template>
 
 <style scoped>
@@ -603,6 +644,18 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
   .notes-layout.mobile .main-col { width: 100%; }
   .notes-layout.mobile .inline-textarea { min-height: 60px; padding: 12px 14px 8px; font-size: 0.9rem; }
   .editor-toolbar .tool-btn { width: 28px; height: 28px; }
+}
+</style>
+
+<style>
+.shortcut-list { display: flex; flex-direction: column; gap: 8px; }
+.shortcut-row { display: flex; align-items: center; gap: 12px; font-size: 0.85rem; }
+.shortcut-row kbd {
+  display: inline-block; min-width: 60px; padding: 3px 8px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 5px; font-size: 0.75rem; font-family: inherit;
+  text-align: center; color: rgb(var(--v-theme-on-surface));
 }
 </style>
 
