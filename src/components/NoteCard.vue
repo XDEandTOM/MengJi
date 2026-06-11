@@ -16,7 +16,6 @@ const contentRef = ref<HTMLElement | null>(null)
 const isOverflow = ref(false)
 const showShareDialog = ref(false)
 const shareLink = ref("")
-const shareLoading = ref(false)
 const shareCopied = ref(false)
 
 onMounted(() => { nextTick(checkOverflow) })
@@ -98,17 +97,10 @@ function timeAgo(ts: number) {
   return `${Math.floor(months / 12)} 年前`
 }
 
-async function shareNote() {
-  shareLoading.value = true
+function shareNote() {
   shareCopied.value = false
-  const result = await store.createShareLink(props.memo.id)
-  if (result) {
-    shareLink.value = window.location.origin + result.url
-    showShareDialog.value = true
-  } else {
-    alert("创建分享链接失败")
-  }
-  shareLoading.value = false
+  shareLink.value = window.location.origin + "/share/" + props.memo.id
+  showShareDialog.value = true
 }
 
 function copyShareLink() {
@@ -116,14 +108,6 @@ function copyShareLink() {
     shareCopied.value = true
     setTimeout(() => { shareCopied.value = false }, 2000)
   })
-}
-
-async function revokeShare() {
-  if (await store.revokeShareLink(props.memo.id)) {
-    showShareDialog.value = false
-  } else {
-    alert("删除分享链接失败")
-  }
 }
 </script>
 
@@ -225,9 +209,6 @@ async function revokeShare() {
         </v-btn>
       </div>
       <div class="text-caption text-medium-emphasis mb-2">任何拥有此链接的人都可以查看这条笔记</div>
-      <v-btn variant="text" color="error" size="small" @click="revokeShare">
-        <v-icon start>mdi-link-variant-off</v-icon>删除分享链接
-      </v-btn>
     </v-card>
   </v-dialog>
 </template>

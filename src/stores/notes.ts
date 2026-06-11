@@ -200,33 +200,10 @@ export const useNotesStore = defineStore("notes", () => {
     } catch { console.warn("store action failed") }
   }
 
-  async function createShareLink(id: string): Promise<{ url: string } | null> {
-    try {
-      const res = await authFetch(`${API}/notes/${id}/share`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-      })
-      if (res.ok) {
-        const data = await res.json()
-        return { url: data.url }
-      }
-    } catch { console.warn("Failed to create share link") }
-    return null
-  }
-
-  async function revokeShareLink(id: string): Promise<boolean> {
-    try {
-      const res = await authFetch(`${API}/notes/${id}/share`, {
-        method: "DELETE",
-      })
-      return res.ok
-    } catch { return false }
-  }
-
   return {
     notes, loaded, loadingMore, hasMore, total,
     searchQuery, selectedTag, selectedDay, allTags,
     fetchNotes, addNote, updateNote, deleteNote,
     togglePin, reactToNote, removeReaction,
-    createShareLink, revokeShareLink,
   }
 })

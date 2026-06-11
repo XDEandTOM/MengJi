@@ -116,13 +116,6 @@ type paginatedNotesResponse struct {
 	Offset int            `json:"offset"`
 }
 
-type shareLinkResponse struct {
-	Token     string `json:"token"`
-	NoteID    string `json:"noteId"`
-	CreatedAt int64  `json:"createdAt"`
-	URL       string `json:"url"`
-}
-
 type adminStatsResponse struct {
 	TotalUsers int `json:"totalUsers"`
 	TotalNotes int `json:"totalNotes"`

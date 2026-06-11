@@ -566,85 +566,12 @@ func handleNotesImport(w http.ResponseWriter, r *http.Request) {
 	jsonResp(w, importResponse{Imported: imported})
 }
 
-// handleShareLink creates or retrieves a share link for a note.
-// POST /api/notes/:id/share
-func handleShareLink(w http.ResponseWriter, r *http.Request, path string) {
-	// Extract note id: /notes/<id>/share → split by "/"
-	parts := strings.Split(strings.TrimPrefix(path, "/notes/"), "/")
-	if len(parts) != 2 || parts[1] != "share" {
-		errResp(w, "not found", 404)
-		return
-	}
-	noteId := parts[0]
-
-	// Verify auth
-	tokenUser, tokenValid := verifyToken(r)
-	if !tokenValid {
-		errResp(w, "unauthorized", 401)
-		return
-	}
-
-	// Verify note ownership
-	var owner string
-	if err := db.QueryRow("SELECT username FROM notes WHERE id=?", noteId).Scan(&owner); err != nil {
-		errResp(w, "note not found", 404)
-		return
-	}
-	if tokenUser != owner {
-		var callerRole string
-		db.QueryRow("SELECT role FROM users WHERE username=?", tokenUser).Scan(&callerRole)
-		if callerRole != "admin" {
-			errResp(w, "forbidden", 403)
-			return
-		}
-	}
-
-	if r.Method == "POST" {
-		// Check if share link already exists
-		var existingToken string
-		err := db.QueryRow("SELECT token FROM share_links WHERE note_id=?", noteId).Scan(&existingToken)
-		if err == nil && existingToken != "" {
-			jsonResp(w, shareLinkResponse{
-				Token: existingToken, NoteID: noteId,
-				URL: "/share/" + existingToken,
-			})
-			return
-		}
-
-		// Generate new share token
-		token := generateToken()
-		if _, err := db.Exec("INSERT INTO share_links (token, note_id, created_at) VALUES (?, ?, ?)", token, noteId, time.Now().UnixMilli()); err != nil {
-			errResp(w, "创建分享链接失败", 500)
-			return
-		}
-		jsonResp(w, shareLinkResponse{
-			Token: token, NoteID: noteId, CreatedAt: time.Now().UnixMilli(),
-			URL: "/share/" + token,
-		})
-
-	} else if r.Method == "DELETE" {
-		if _, err := db.Exec("DELETE FROM share_links WHERE note_id=?", noteId); err != nil {
-			errResp(w, "删除分享链接失败", 500)
-			return
-		}
-		jsonResp(w, successResponse{Success: "ok"})
-	} else {
-		errResp(w, "method not allowed", 405)
-	}
-}
-
-// handleShareView returns a note by its share token (public, no auth).
-// GET /api/share/:token
+// handleShareView returns a note by its ID (public, no auth).
+// GET /api/share/:id
 func handleShareView(w http.ResponseWriter, r *http.Request) {
-	token := strings.TrimPrefix(r.URL.Path, "/api/share/")
-	if token == "" {
-		errResp(w, "missing token", 400)
-		return
-	}
-
-	var noteId string
-	if err := db.QueryRow("SELECT note_id FROM share_links WHERE token=?", token).Scan(&noteId); err != nil {
-		errResp(w, "分享链接无效或已过期", 404)
+	noteId := strings.TrimPrefix(r.URL.Path, "/api/share/")
+	if noteId == "" {
+		errResp(w, "missing note id", 400)
 		return
 	}
 
