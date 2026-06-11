@@ -281,35 +281,15 @@ function handleEdit(memo: Note) {
   inlineTextarea.value?.focus()
 }
 
-// Drag-and-drop reorder for pinned notes
-const dragId = ref("")
-const dragOverId = ref("")
-
-function onDragStart(note: Note) {
-  dragId.value = note.id
-}
-
-function onDragOver(e: DragEvent, note: Note) {
-  if (note.id !== dragId.value && note.pinned) {
-    e.preventDefault()
-    dragOverId.value = note.id
-  }
-}
-
-function onDragLeave() {
-  dragOverId.value = ""
-}
-
-async function onDrop(e: DragEvent, targetNote: Note) {
-  e.preventDefault()
-  dragOverId.value = ""
-  if (!dragId.value || dragId.value === targetNote.id) return
-  const pinnedNotes = filteredNotes.value.filter(n => n.pinned)
-  const fromIdx = pinnedNotes.findIndex(n => n.id === dragId.value)
-  const toIdx = pinnedNotes.findIndex(n => n.id === targetNote.id)
-  if (fromIdx === -1 || toIdx === -1) return
-  pinnedNotes.splice(toIdx, 0, pinnedNotes.splice(fromIdx, 1)[0])
-  const order = pinnedNotes.map(n => n.id)
+// Move pinned note up/down
+async function movePinnedNote(note: Note, dir: "up" | "down") {
+  const pinned = filteredNotes.value.filter(n => n.pinned)
+  const idx = pinned.findIndex(n => n.id === note.id)
+  if (idx === -1) return
+  const swap = idx + (dir === "up" ? -1 : 1)
+  if (swap < 0 || swap >= pinned.length) return
+  ;[pinned[idx], pinned[swap]] = [pinned[swap], pinned[idx]]
+  const order = pinned.map(n => n.id)
   await authFetch("/api/notes/reorder", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -473,14 +453,8 @@ async function onDrop(e: DragEvent, targetNote: Note) {
           <p v-if="!searchQuery && !selectedTag && !selectedDay" class="text-caption text-medium-emphasis">点击上方编辑框，写下你的第一段记忆吧 ✨</p>
         </div>
         <div class="d-flex flex-column ga-4">
-          <div v-for="note in filteredNotes" :key="note.id"
-            :draggable="note.pinned && auth.isLoggedIn"
-            @dragstart="onDragStart(note)"
-            @dragover="onDragOver($event, note)"
-            @dragleave="onDragLeave"
-            @drop="onDrop($event, note)"
-            :class="['note-drag-wrapper', { 'drag-over': dragOverId === note.id, 'dragging': dragId === note.id }]">
-            <NoteCard :memo="note" :search-query="searchQuery" :logged-in="auth.isLoggedIn" @edit="handleEdit" />
+          <div v-for="note in filteredNotes" :key="note.id" class="note-drag-wrapper">
+            <NoteCard :memo="note" :search-query="searchQuery" :logged-in="auth.isLoggedIn" @edit="handleEdit" @move-pin="movePinnedNote" />
           </div>
         </div>
             </template>
@@ -584,12 +558,6 @@ async function onDrop(e: DragEvent, targetNote: Note) {
 .note-drag-wrapper {
   transition: opacity 0.15s, box-shadow 0.15s;
   border-radius: 12px;
-}
-.note-drag-wrapper.dragging {
-  opacity: 0.4;
-}
-.note-drag-wrapper.drag-over {
-  box-shadow: 0 0 0 2px rgb(var(--v-theme-primary));
 }
 
 @media (max-width: 768px) {

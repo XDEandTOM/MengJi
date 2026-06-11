@@ -31,7 +31,7 @@ export const useNotesStore = defineStore("notes", () => {
   async function fetchNotes() {
     try {
       const res = await authFetch(`${API}/notes`)
-      if (res.ok) { notes.value = await res.json(); notes.value = [...notes.value].sort((a, b) => { if (a.pinned !== b.pinned) return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0); return b.createdAt - a.createdAt; }); loaded.value = true }
+      if (res.ok) { notes.value = await res.json(); loaded.value = true }
     } catch { console.warn("Failed to fetch notes from server") }
   }
 
@@ -74,11 +74,9 @@ export const useNotesStore = defineStore("notes", () => {
   }
 
   async function togglePin(id: string) {
-    const note = notes.value.find(m => m.id === id)
-    if (!note) return
     try {
       const res = await authFetch(`${API}/notes/${id}/pin`, { method: "PATCH" })
-      if (res.ok) { note.pinned = !note.pinned; notes.value = [...notes.value].sort((a, b) => { if (a.pinned !== b.pinned) return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0); return b.updatedAt - a.updatedAt; }); }
+      if (res.ok) { await fetchNotes() }
     } catch { console.warn("Failed to toggle pin") }
   }
 

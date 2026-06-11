@@ -7,7 +7,7 @@ import MarkdownPreview from "./MarkdownPreview.vue"
 import emojiRaw from "emojibase-data/zh/compact.json"
 
 const props = defineProps<{ memo: Note; loggedIn: boolean; searchQuery?: string }>()
-const emit = defineEmits<{ edit: [memo: Note] }>()
+const emit = defineEmits<{ edit: [memo: Note]; movePin: [note: Note, dir: "up" | "down"] }>()
 const store = useNotesStore()
 const auth = useAuthStore()
 
@@ -99,7 +99,6 @@ function timeAgo(ts: number) {
   <v-card variant="flat" class="memo-card" :class="{ pinned: memo.pinned }">
     <div class="card-inner">
       <div class="d-flex align-start ga-3 mb-2">
-        <v-icon v-if="memo.pinned" size="small" color="rgba(var(--v-theme-on-surface),0.15)" class="drag-handle">mdi-drag</v-icon>
         <div class="avatar-wrap">
           <v-img v-if="isImage(memo.avatar)" :src="memo.avatar" alt="" cover width="40" height="40" class="avatar-img" />
           <div v-else class="avatar-fallback">{{ displayName(memo).charAt(0).toUpperCase() }}</div>
@@ -112,6 +111,10 @@ function timeAgo(ts: number) {
           <div class="time">{{ timeAgo(memo.createdAt) }}</div>
         </div>
         <div v-if="loggedIn && (auth.isAdmin || memo.username === auth.userName)" class="d-flex ga-1 flex-shrink-0" style="margin-top:2px">
+          <template v-if="memo.pinned">
+            <v-btn icon="mdi-chevron-up" size="x-small" variant="text" class="action-btn" @click="emit('movePin', memo, 'up')" />
+            <v-btn icon="mdi-chevron-down" size="x-small" variant="text" class="action-btn" @click="emit('movePin', memo, 'down')" />
+          </template>
           <v-btn icon="mdi-pencil" size="x-small" variant="text" class="action-btn" @click="emit('edit', memo)" />
           <v-btn icon="mdi-pin-outline" size="x-small" variant="text"
             :color="memo.pinned ? 'primary' : undefined" class="action-btn"
@@ -216,7 +219,6 @@ function timeAgo(ts: number) {
 .reaction-chip.active { outline: 1px solid rgb(var(--v-theme-primary)); }
 .reaction-add-btn { opacity: 0.4; }
 .reaction-add-btn:hover { opacity: 1; }
-.drag-handle { cursor: grab; margin-top: 12px; }
 .emoji-picker { background: rgb(var(--v-theme-surface)); border: 1px solid rgba(var(--v-theme-on-surface),0.12); border-radius: 12px; overflow: hidden; }
 .emoji-btn { font-size: 1.1rem; width: 32px; height: 32px; min-width: 0 !important; padding: 0 !important; }
 .cat-btn { font-size: 1rem; width: 28px; height: 28px; min-width: 0 !important; border-radius: 8px; opacity:0.5; transition:all 0.15s; }
