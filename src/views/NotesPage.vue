@@ -176,7 +176,11 @@ async function deleteForever(id: string) {
 
 
 function onInlineKeydown(e: KeyboardEvent) {
-  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) submitInline()
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { submitInline(); return }
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === "b") { e.preventDefault(); insertBold(); return }
+    if (e.key === "i") { e.preventDefault(); insertItalic(); return }
+  }
 }
 
 async function submitInline() {
