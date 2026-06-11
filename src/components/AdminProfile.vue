@@ -80,7 +80,7 @@ async function importNotes(e: Event) {
     })
     if (res.ok) {
       const data = await res.json()
-      snackMsg.value = `成功导入 ${data.imported} 条备忘录`; snackbar.value = true
+      snackMsg.value = `成功导入 ${data.imported} 条碎片笔记`; snackbar.value = true
     } else { snackMsg.value = "导入失败"; snackbar.value = true }
   } catch { snackMsg.value = "文件格式错误"; snackbar.value = true }
   importing.value = false
@@ -143,7 +143,7 @@ async function importNotes(e: Event) {
         <div class="d-flex align-center justify-space-between">
           <div class="d-flex align-center ga-3">
             <v-icon color="primary">mdi-export</v-icon>
-            <span class="text-body-2">导出我的备忘录</span>
+            <span class="text-body-2">导出我的碎片笔记</span>
           </div>
           <v-btn size="small" variant="tonal" color="primary" @click="exportNotes">导出</v-btn>
         </div>
@@ -151,7 +151,7 @@ async function importNotes(e: Event) {
         <div class="d-flex align-center justify-space-between">
           <div class="d-flex align-center ga-3">
             <v-icon color="primary">mdi-import</v-icon>
-            <span class="text-body-2">导入备忘录</span>
+            <span class="text-body-2">导入碎片笔记</span>
           </div>
           <v-btn size="small" variant="tonal" color="primary" :loading="importing" @click="fileInput?.click()">导入</v-btn>
         </div>

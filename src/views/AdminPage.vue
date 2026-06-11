@@ -67,7 +67,7 @@ function formatDate(ts: number) { return new Date(ts).toLocaleString("zh-CN") }
       <v-btn icon="mdi-arrow-left" variant="text" size="small" class="mr-2" @click="emit('back')" />
       <div>
         <h1 class="text-h4 font-weight-bold mb-1">后台管理</h1>
-        <p class="text-body-2 text-medium-emphasis">管理用户与备忘录</p>
+        <p class="text-body-2 text-medium-emphasis">管理用户与碎片笔记</p>
       </div>
       <v-spacer />
       <v-btn prepend-icon="mdi-refresh" variant="text" size="small" :loading="loading" @click="loadData">刷新</v-btn>
@@ -94,7 +94,7 @@ function formatDate(ts: number) { return new Date(ts).toLocaleString("zh-CN") }
         <div class="d-flex align-center justify-space-between py-3">
           <div class="d-flex align-center ga-3">
             <v-icon color="primary">mdi-pencil-box-multiple</v-icon>
-            <span class="text-body-2">备忘录总数</span>
+            <span class="text-body-2">碎片笔记总数</span>
           </div>
           <span class="text-h5 font-weight-bold">{{ stats?.totalNotes || 0 }}</span>
         </div>

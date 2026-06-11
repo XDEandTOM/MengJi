@@ -103,7 +103,7 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 		}
 		if _, err := db.Exec("INSERT INTO notes (id, content, created_at, updated_at, pinned, tags, username, avatar, nickname) VALUES (?,?,?,?,0,?,?,?,?)",
 			n.Id, n.Content, n.CreatedAt, n.UpdatedAt, string(tagBytes), n.Username, n.Avatar, n.Nickname); err != nil {
-			errResp(w, "备忘录创建失败", 500)
+			errResp(w, "碎片笔记创建失败", 500)
 			return
 		}
 		jsonResp(w, successResponse{Success: "ok"})
@@ -231,7 +231,7 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 				return
 			}
 			if _, err := db.Exec("UPDATE notes SET content=?, tags=?, updated_at=? WHERE id=?", body.Content, string(tagBytes), body.UpdatedAt, parts[0]); err != nil {
-				errResp(w, "备忘录更新失败", 500)
+				errResp(w, "碎片笔记更新失败", 500)
 				return
 			}
 			jsonResp(w, successResponse{Success: "ok"})
@@ -264,7 +264,7 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 			var ct, ut int64
 			var p int
 			if err := db.QueryRow("SELECT content, created_at, updated_at, pinned, tags, avatar, nickname FROM notes WHERE id=?", parts[0]).Scan(&cont, &ct, &ut, &p, &ts, &av, &nk); err != nil {
-				errResp(w, "备忘录不存在", 404)
+				errResp(w, "碎片笔记不存在", 404)
 				return
 			}
 			if _, err := db.Exec("INSERT OR IGNORE INTO trash (id, content, created_at, updated_at, pinned, tags, username, avatar, nickname, deleted_at) VALUES (?,?,?,?,?,?,?,?,?,?)", parts[0], cont, ct, ut, p, ts, owner, av, nk, time.Now().UnixMilli()); err != nil {

@@ -461,15 +461,15 @@ async function onDrop(e: DragEvent, targetNote: Note) {
       <template v-else>
         <div v-if="selectedDay" class="date-filter-bar">
           <v-icon size="x-small" color="primary">mdi-calendar</v-icon>
-          <span>{{ selectedDay }} 的备忘录</span>
+          <span>{{ selectedDay }} 的碎片笔记</span>
           <v-btn icon="mdi-close" size="x-small" variant="text" @click="selectedDay = ''" />
         </div>
         <div v-if="filteredNotes.length === 0" class="empty-state">
           <div class="empty-icon-wrap">
             <v-icon size="48" color="rgba(var(--v-theme-on-surface),0.12)">mdi-pencil-box-multiple-outline</v-icon>
           </div>
-          <p v-if="searchQuery || selectedTag || selectedDay" class="text-body-1 font-weight-medium mb-1">没有找到匹配的备忘录</p>
-          <p v-else class="text-body-1 font-weight-medium mb-1">还没有备忘录</p>
+          <p v-if="searchQuery || selectedTag || selectedDay" class="text-body-1 font-weight-medium mb-1">没有找到匹配的碎片笔记</p>
+          <p v-else class="text-body-1 font-weight-medium mb-1">还没有碎片笔记</p>
           <p v-if="!searchQuery && !selectedTag && !selectedDay" class="text-caption text-medium-emphasis">点击上方编辑框，写下你的第一段记忆吧 ✨</p>
         </div>
         <div class="d-flex flex-column ga-4">
