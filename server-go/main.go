@@ -29,6 +29,7 @@ var serverPort = "3742"
 var serverCertFile = ""
 var serverKeyFile = ""
 var brotliEnabled = true
+var githubToken = ""
 
 func main() {
 	port := os.Getenv("PORT")
@@ -62,13 +63,17 @@ func main() {
 			var cfg struct {
 				Cert string `json:"cert"`
 				Key  string `json:"key"`
+				GitHubToken string `json:"github_token,omitempty"`
 			}
-			if json.Unmarshal(cfgData, &cfg) == nil && cfg.Cert != "" && cfg.Key != "" {
-				certPath := filepath.Join(dataDir, cfg.Cert)
-				keyPath := filepath.Join(dataDir, cfg.Key)
-				if _, err := os.Stat(certPath); err == nil {
-					certFile = certPath
-					keyFile = keyPath
+			if json.Unmarshal(cfgData, &cfg) == nil {
+				githubToken = cfg.GitHubToken
+				if cfg.Cert != "" && cfg.Key != "" {
+					certPath := filepath.Join(dataDir, cfg.Cert)
+					keyPath := filepath.Join(dataDir, cfg.Key)
+					if _, err := os.Stat(certPath); err == nil {
+						certFile = certPath
+						keyFile = keyPath
+					}
 				}
 			}
 		}
@@ -242,6 +247,8 @@ func handleAPI(w http.ResponseWriter, r *http.Request) {
 	}
 	path := strings.TrimPrefix(r.URL.Path, "/api")
 	switch {
+	case strings.HasPrefix(path, "/gh/"):
+		handleGitHubProxy(w, r)
 	case strings.HasPrefix(path, "/auth/"):
 		handleAuth(w, r, path)
 	case strings.HasPrefix(path, "/notes"):
@@ -284,6 +291,29 @@ func handleUploads(w http.ResponseWriter, r *http.Request) {
 	if contentType != "" { w.Header().Set("Content-Type", contentType) }
 	w.Header().Set("Cache-Control", "public, max-age=604800")
 	http.ServeFile(w, r, fullPath)
+}
+
+func handleGitHubProxy(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/gh/")
+	if path == "" { errResp(w, "missing path", 400); return }
+	// Optional: use GITHUB_TOKEN env var for higher rate limits
+	token := githubToken
+	ghURL := "https://api.github.com/" + path
+	req, _ := http.NewRequest("GET", ghURL, nil)
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil { errResp(w, "proxy error", 502); return }
+	defer resp.Body.Close()
+	for k, v := range resp.Header {
+		if k == "Content-Type" || k == "Content-Length" {
+			w.Header()[k] = v
+		}
+	}
+	w.WriteHeader(resp.StatusCode)
+	io.Copy(w, resp.Body)
 }
 
 func handleStatic(w http.ResponseWriter, r *http.Request) {

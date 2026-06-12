@@ -36,25 +36,19 @@ const DRAFT_KEY = "suisui-draft"
 
 const inlineContent = ref("")
 const inlineTagsInput = ref<string[]>([])
-const tagInput = ref("")
+
 const showShortcuts = ref(false)
-function addTag() {
-  const t = tagInput.value.trim()
-  if (t && !inlineTagsInput.value.includes(t)) {
-    inlineTagsInput.value.push(t)
-  }
-  tagInput.value = ""
-}
-const inlineUploading = ref(false)
+
+
 const inlineTextarea = ref<HTMLTextAreaElement | null>(null)
-const inlineFileInput = ref<HTMLInputElement | null>(null)
+
 const uploadedImages = ref<string[]>([])
 const editingNoteId = ref("")
 const zoomedUpload = ref("")
 const showTrash = ref(false)
 const deletedNotes = ref<Note[]>([])
-const editorRef = ref<any>(null)
-const hasDraft = computed(() => !!(inlineContent.value || uploadedImages.value.length))
+const editorRef = ref<InstanceType<typeof InlineEditor> | null>(null)
+
 
 const timelineGroups = computed(() => {
   const groups: { date: string; notes: Note[] }[] = []
@@ -196,29 +190,7 @@ function handleClipParam() {
   }
 }
 
-function insertMd(b: string, f: string, fb: string) {
-  const el = inlineTextarea.value
-  if (!el) { inlineContent.value += fb; return }
-  const start = el.selectionStart, end = el.selectionEnd
-  const t = inlineContent.value, sel = t.substring(start, end)
-  inlineContent.value = t.slice(0,start) + b + (sel||fb) + f + t.slice(end)
-  nextTick(() => { el.focus(); el.selectionStart = el.selectionEnd = start + b.length + (sel||fb).length })
-}
-function insertBold() { insertMd("**","**","粗体") }
-function insertItalic() { insertMd("*","*","斜体") }
-function insertHeading() { insertMd("\n## ","","标题") }
-function insertCode() { insertMd("`","`","code") }
-function insertLink() { insertMd("[","](url)","链接文字") }
-function insertList() { insertMd("\n- ","","列表项") }
-function insertOrderedList() { insertMd("\n1. ","","列表项") }
-function insertQuote() { insertMd("\n> ","","引用") }
-function insertStrikethrough() { insertMd("~~","~~","删除线") }
-function insertHr() { insertMd("\n---\n","","") }
-function insertTable() { insertMd("\n| 列1 | 列2 | 列3 |\n| --- | --- | --- |\n| 内容 | 内容 | 内容 |","","") }
-function insertTodo() { insertMd("\n- [ ] ","","待办事项") }
-function insertCodeBlock() { insertMd("\n```\n","\n```\n","代码块") }
-
-async function fetchDeletedNotes() {
+async function fetchDeletedNotes() { // eslint-disable-line @typescript-eslint/no-unused-vars
   try {
     const res = await authFetch(`/api/notes/trash?username=${auth.userName}`)
     if (res.ok) { deletedNotes.value = await res.json() }
@@ -235,106 +207,6 @@ async function deleteForever(id: string) {
     const res = await authFetch(`/api/notes/${id}/hard-delete?username=${auth.userName}`,{method:"DELETE"})
     if (res.ok) { deletedNotes.value = deletedNotes.value.filter(n => n.id !== id) }
   } catch { console.warn("deleteForever failed") }
-}
-
-function onInlineKeydown(e: KeyboardEvent) {
-  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { submitInline(); return }
-  if (e.ctrlKey || e.metaKey) {
-    if (e.key === "b") { e.preventDefault(); insertBold(); return }
-    if (e.key === "i") { e.preventDefault(); insertItalic(); return }
-  }
-}
-
-async function submitInline() {
-  if ((!inlineContent.value.trim() && !uploadedImages.value.length) || !auth.isLoggedIn) return
-  const tags = Array.isArray(inlineTagsInput.value) ? inlineTagsInput.value.map(t => t.trim()).filter(Boolean) : []
-  let content = inlineContent.value
-  for (const url of uploadedImages.value) content += "\n\n![](" + url + ")"
-  if (editingNoteId.value) {
-    await store.updateNote(editingNoteId.value, content.trim(), tags, auth.userName)
-    editingNoteId.value = ""
-  } else {
-    await store.addNote(content.trim(), tags, auth.userName)
-  }
-  inlineContent.value = ""
-  inlineTagsInput.value = []
-  uploadedImages.value = []
-  clearDraft()
-  nextTick(() => {
-    if (inlineTextarea.value) { inlineTextarea.value.style.height = '' }
-  })
-}
-
-function triggerInlineUpload() { inlineFileInput.value?.click() }
-
-async function onInlineUpload(e: Event) {
-  const input = e.target as HTMLInputElement
-  const files = Array.from(input.files || [])
-  if (!files.length) return
-  if (files.some(f => f.size > 10 * 1024 * 1024)) { alert("图片大小不能超过 10MB"); input.value = ""; return }
-  inlineUploading.value = true
-  for (const file of files) {
-    const fd = new FormData()
-    fd.append("image", file)
-    try {
-      const res = await authFetch("/api/notes/upload", { method: "POST", body: fd })
-      const data = await res.json()
-      if (data.success) uploadedImages.value.push(data.url)
-      else alert(data.error || "上传失败")
-    } catch { alert("上传失败") }
-  }
-  inlineUploading.value = false
-  input.value = ""
-}
-
-async function onInlineDrop(e: DragEvent) {
-  const files = e.dataTransfer?.files
-  if (!files || !files.length) return
-  e.preventDefault()
-  if (Array.from(files).some(f => f.size > 10 * 1024 * 1024)) { alert("图片大小不能超过 10MB"); return }
-  inlineUploading.value = true
-  for (const file of Array.from(files)) {
-    if (!file.type.startsWith("image/")) continue
-    const fd = new FormData()
-    fd.append("image", file)
-    try {
-      const res = await authFetch("/api/notes/upload", { method: "POST", body: fd })
-      const data = await res.json()
-      if (data.success) uploadedImages.value.push(data.url)
-      else alert(data.error || "上传失败")
-    } catch { alert("上传失败") }
-  }
-  inlineUploading.value = false
-}
-
-async function onInlinePaste(e: ClipboardEvent) {
-  const items = e.clipboardData?.items
-  if (!items) return
-  for (let i = 0; i < items.length; i++) {
-    if (items[i].type.startsWith("image/")) {
-      e.preventDefault()
-      const file = items[i].getAsFile()
-      if (!file) continue
-      if (file.size > 10 * 1024 * 1024) { alert("图片大小不能超过 10MB"); return }
-      inlineUploading.value = true
-      const fd = new FormData()
-      fd.append("image", file)
-      try {
-        const res = await authFetch("/api/notes/upload", { method: "POST", body: fd })
-        const data = await res.json()
-        if (data.success) uploadedImages.value.push(data.url)
-        else alert(data.error || "上传失败")
-      } catch { alert("粘贴图片上传失败") }
-      inlineUploading.value = false
-      return
-    }
-  }
-}
-
-function autoGrowTextarea(e: Event) {
-  const el = e.target as HTMLTextAreaElement
-  el.style.height = "auto"
-  el.style.height = el.scrollHeight + "px"
 }
 
 function handleEdit(memo: Note) {

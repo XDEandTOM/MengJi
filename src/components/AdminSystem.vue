@@ -25,12 +25,33 @@ const certText = ref("")
 const keyText = ref("")
 const savingSSL = ref(false)
 const brotliEnabled = ref(true)
+const githubTokenConfigured = ref(false)
+const githubTokenInput = ref("")
+const showGitHubTokenDialog = ref(false)
 
 async function loadBrotliConfig() {
   try {
     const r = await authFetch("/api/admin/config/brotli")
     if (r.ok) { const d = await r.json(); brotliEnabled.value = d.enabled }
   } catch { console.warn("loadBrotli failed") }
+}
+
+async function loadGitHubTokenStatus() {
+  try {
+    const r = await authFetch("/api/admin/config/github-token")
+    if (r.ok) { const d = await r.json(); githubTokenConfigured.value = d.configured }
+  } catch { console.warn("loadGitHubToken failed") }
+}
+
+async function saveGitHubToken() {
+  try {
+    await authFetch("/api/admin/config/github-token", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: githubTokenInput.value })
+    })
+    githubTokenConfigured.value = !!githubTokenInput.value
+    showGitHubTokenDialog.value = false
+  } catch { alert("保存失败") }
 }
 
 async function toggleBrotli() {
@@ -137,6 +158,7 @@ async function toggleRegister(val: boolean) {
 loadSettings()
 loadServerConfig()
 loadBrotliConfig()
+loadGitHubTokenStatus()
 </script>
 
 <template>
@@ -208,7 +230,7 @@ loadBrotliConfig()
       <h3 class="text-subtitle-1 font-weight-medium mb-4">服务器</h3>
       <div class="d-flex flex-column ga-3">
         <div class="d-flex align-center ga-3">
-          <v-chip size="x-small" variant="tonal" color="default" class="server-badge">v{{ serverConfig.version || "—" }}</v-chip>
+          <v-chip size="x-small" variant="tonal" color="default" class="server-badge">{{ serverConfig.version || "—" }}</v-chip>
           <v-chip size="x-small" variant="tonal" :color="serverConfig.tls ? 'success' : 'default'" class="server-badge">
             {{ serverConfig.tls ? 'TLS' : '直连 HTTP' }}
           </v-chip>
@@ -226,6 +248,16 @@ loadBrotliConfig()
         <div class="d-flex align-center ga-2">
           <v-btn size="small" variant="flat" color="primary" :loading="savingSSL" @click="saveSSL">保存并重启</v-btn>
           <v-btn v-if="serverConfig.tls" size="small" variant="tonal" color="error" @click="clearSSL">关闭 TLS</v-btn>
+        </div>
+        <v-divider />
+        <div class="d-flex align-center justify-space-between">
+          <span class="text-body-2">GitHub Token</span>
+          <div class="d-flex align-center ga-2">
+            <v-chip size="x-small" :color="githubTokenConfigured ? 'success' : 'default'" variant="tonal">
+              {{ githubTokenConfigured ? '已配置' : '未配置' }}
+            </v-chip>
+            <v-btn size="small" variant="tonal" color="primary" @click="showGitHubTokenDialog = true">修改</v-btn>
+          </div>
         </div>
       </div>
     </v-card>
@@ -270,6 +302,22 @@ loadBrotliConfig()
           <v-spacer />
           <v-btn variant="text" @click="showDomainDialog = false">取消</v-btn>
           <v-btn variant="tonal" color="primary" @click="saveDomain">保存</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    <!-- GitHub Token Dialog -->
+    <v-dialog v-model="showGitHubTokenDialog" max-width="400">
+      <v-card class="rounded-xl pa-4">
+        <v-card-title class="text-subtitle-1 font-weight-medium px-0">GitHub Token</v-card-title>
+        <v-card-text class="px-0">
+          <v-text-field v-model="githubTokenInput" variant="outlined" hide-details density="compact"
+            placeholder="ghp_xxxxxxxxxxxx" autofocus @keyup.enter="saveGitHubToken" />
+          <div class="text-caption text-medium-emphasis mt-2">用于提升 GitHub API 请求频率（60→5000 次/小时）。不会泄露到前端。</div>
+        </v-card-text>
+        <v-card-actions class="px-0">
+          <v-spacer />
+          <v-btn variant="text" @click="showGitHubTokenDialog = false">取消</v-btn>
+          <v-btn variant="tonal" color="primary" @click="saveGitHubToken">保存</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

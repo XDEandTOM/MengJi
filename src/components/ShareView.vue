@@ -223,7 +223,7 @@ function toggleReaction(emoji: string) {
   text-decoration: none;
   color: rgb(var(--v-theme-on-surface));
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 1rem;
   opacity: 0.7;
   transition: opacity 0.2s;
 }
@@ -231,7 +231,7 @@ function toggleReaction(emoji: string) {
 .share-main {
   display: flex;
   justify-content: center;
-  padding: 32px 16px;
+  padding: 20px 16px;
 }
 .share-error {
   text-align: center;
@@ -240,13 +240,13 @@ function toggleReaction(emoji: string) {
 .share-error h2 { font-size: 1.2rem; margin-bottom: 8px; }
 .share-note-card {
   width: 100%;
-  max-width: 560px;
+  max-width: 620px;
   background: rgba(var(--v-theme-surface), 0.7);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  border-radius: 12px;
-  padding: 14px 18px 10px;
+  border-radius: 14px;
+  padding: 14px 20px 10px;
 }
 .share-note-header {
   margin-bottom: 8px;
@@ -254,27 +254,27 @@ function toggleReaction(emoji: string) {
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 .share-avatar-fallback {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgb(var(--v-theme-primary));
   color: #fff;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-weight: 600;
 }
-.share-author-name { font-weight: 600; font-size: 0.85rem; }
-.share-time { font-size: 0.7rem; color: rgba(var(--v-theme-on-surface), 0.45); }
+.share-author-name { font-weight: 600; font-size: 0.95rem; }
+.share-time { font-size: 0.78rem; color: rgba(var(--v-theme-on-surface), 0.45); }
 .share-content {
-  line-height: 1.55;
-  font-size: 0.88rem;
+  line-height: 1.65;
+  font-size: 1rem;
 }
 .share-footer {
   text-align: center;
-  padding: 16px;
-  font-size: 0.75rem;
+  padding: 20px;
+  font-size: 0.82rem;
   color: rgba(var(--v-theme-on-surface), 0.35);
 }
 .share-footer a { color: inherit; }
@@ -293,9 +293,9 @@ function toggleReaction(emoji: string) {
 @media (max-width: 640px) {
   .share-header { padding: 12px 16px; }
   .share-main { padding: 20px 12px; }
-  .share-note-card { padding: 12px 14px 8px; border-radius: 10px; }
-  .share-content { font-size: 0.85rem; line-height: 1.5; }
-  .share-author-name { font-size: 0.8rem; }
-  .share-footer { padding: 12px; }
+  .share-note-card { padding: 14px 16px 12px; border-radius: 12px; }
+  .share-content { font-size: 0.95rem; line-height: 1.55; }
+  .share-author-name { font-size: 0.9rem; }
+  .share-footer { padding: 14px; }
 }
 </style>

@@ -68,7 +68,6 @@ marked.setOptions({ breaks: true, gfm: true })
 const emit = defineEmits<{ "todo-toggle": [idx: number] }>()
 const props = defineProps<{ content: string; searchQuery?: string }>()
 const zoomedImage = ref("")
-const expandedGrids = ref<Set<string>>(new Set())
 const loadedRepos = ref<Set<string>>(new Set())
 const githubRepos = ref<Record<string, { name: string; fullName: string; description: string; stars: number; language: string; license: string; url: string }>>({})
 
@@ -85,8 +84,8 @@ async function fetchGitHubRepos() {
   for (const fullName of repos) {
     if (githubRepos.value[fullName]) continue
     try {
-      const res = await fetch(`https://api.github.com/repos/${fullName}`)
-      if (!res.ok) continue
+      const res = await fetch(`/api/gh/repos/${fullName}`)
+      if (!res.ok) { console.warn(`GitHub API ${fullName}: ${res.status}`); continue }
       const d = await res.json()
       githubRepos.value = { ...githubRepos.value, [fullName]: {
         name: d.name, fullName: d.full_name, description: d.description || "",
@@ -127,8 +126,8 @@ function highlightText(text: string, query: string): string {
 
 const rendered = computed(() => {
   todoIndex = 0
-  // Ensure reactivity when grids are expanded or repos loaded
-  void expandedGrids.value.has(""); void loadedRepos.value.has("");
+  // Ensure reactivity when repos are loaded
+  void loadedRepos.value.has("");
   try {
     // Strip loaded GitHub URLs from content
     let content = props.content
@@ -141,18 +140,13 @@ const rendered = computed(() => {
       const images = match.match(/<img[^>]*>/g)
       if (!images || images.length < 2) return match
       const id = "c" + carouselIdx++
-      const maxVisible = 4
-      const isExpanded = expandedGrids.value.has(id)
-      const visible = isExpanded ? images : images.slice(0, maxVisible)
-      const remaining = images.length - maxVisible
-      return `<div class="img-grid${remaining > 0 && !isExpanded ? ' has-more' : ''}" data-id="${id}">
-        ${visible.map((img, i) => {
-          const isLast = i === maxVisible - 1 && remaining > 0 && !isExpanded
-          return `<div class="img-grid-cell${isLast ? ' img-grid-overflow' : ''}">
-            ${img}
-            ${isLast ? `<div class="img-grid-overlay" data-id="${id}"><span class="img-grid-more">+${remaining}</span></div>` : ''}
-          </div>`
-        }).join("")}
+      return `<div class="img-scroll" data-id="${id}">
+        <div class="img-scroll-track">
+          ${images.map((img, _i) => `<div class="img-scroll-slide">${img}</div>`).join("")}
+        </div>
+        <button class="img-scroll-btn img-scroll-prev" data-id="${id}">‹</button>
+        <button class="img-scroll-btn img-scroll-next" data-id="${id}">›</button>
+        <div class="img-scroll-dots">${images.map((_, i) => `<span class="img-scroll-dot" data-idx="${i}"></span>`).join("")}</div>
       </div>`
     })
     return html
@@ -168,16 +162,19 @@ function handleClick(e: MouseEvent) {
     emit("todo-toggle", idx)
     return
   }
-  // Expand image grid
-  const cell = target.closest(".img-grid-overflow") as HTMLElement
-  if (cell) {
-    const grid = cell.closest(".img-grid") as HTMLElement
-    const id = grid?.getAttribute("data-id")
-    if (id) { expandedGrids.value.add(id); expandedGrids.value = new Set(expandedGrids.value) }
-    return
-  }
   const img = target.closest("img") as HTMLImageElement
   if (img) { zoomedImage.value = img.src; return }
+  // Scroll prev/next
+  const btn = target.closest(".img-scroll-btn") as HTMLElement
+  if (btn) {
+    const wrap = btn.closest(".img-scroll") as HTMLElement
+    if (!wrap) return
+    const track = wrap.querySelector(".img-scroll-track") as HTMLElement
+    const isNext = btn.classList.contains("img-scroll-next")
+    const amt = track.clientWidth * (isNext ? 1 : -1)
+    track.scrollBy({ left: amt, behavior: "smooth" })
+    return
+  }
   const copyBtn = target.closest(".copy-btn") as HTMLElement
   if (!copyBtn) return
   const raw = copyBtn.getAttribute("data-code")
@@ -235,19 +232,20 @@ function handleClick(e: MouseEvent) {
 <style scoped>
 .markdown-body { word-break: break-word; line-height: 1.6; }
 .markdown-body :deep(h1),.markdown-body :deep(h2),.markdown-body :deep(h3),
-.markdown-body :deep(h4),.markdown-body :deep(h5),.markdown-body :deep(h6) { margin: .5em 0 .25em; line-height: 1.3; }
+.markdown-body :deep(h4),.markdown-body :deep(h5),.markdown-body :deep(h6) { margin: .3em 0 .15em; line-height: 1.3; }
 .markdown-body :deep(h1) { font-size: 1.4em; }
 .markdown-body :deep(h2) { font-size: 1.25em; }
 .markdown-body :deep(h3) { font-size: 1.1em; }
-.markdown-body :deep(p) { margin: .3em 0; }
-.markdown-body :deep(ul),.markdown-body :deep(ol) { padding-left: 1.4em; margin: .3em 0; }
-.markdown-body :deep(blockquote) { border-left: 3px solid rgba(var(--v-theme-primary),.5); padding-left: .75em; margin: .4em 0; opacity: .85; }
+.markdown-body :deep(p) { margin: .2em 0; }
+.markdown-body :deep(p:has(img)) { margin: .1em 0; }
+.markdown-body :deep(ul),.markdown-body :deep(ol) { padding-left: 1.4em; margin: .2em 0; }
+.markdown-body :deep(blockquote) { border-left: 3px solid rgba(var(--v-theme-primary),.5); padding-left: .75em; margin: .25em 0; opacity: .85; }
 .markdown-body :deep(code) { background: rgba(var(--v-theme-on-surface),.08); border-radius: 4px; padding: .15em .4em; font-size: .9em; font-family: var(--code-font); }
 .markdown-body :deep(pre) { background: rgba(var(--v-theme-on-surface),.05); border-radius: 8px; padding: .75em 1em; overflow-x: auto; margin: .5em 0; }
 .markdown-body :deep(pre code) { background: none; padding: 0; font-size: .85em; font-family: var(--code-font); }
 .markdown-body :deep(table) { border-collapse: collapse; width: 100%; margin: .5em 0; }
 .markdown-body :deep(th),.markdown-body :deep(td) { border: 1px solid rgba(var(--v-theme-on-surface),.15); padding: .4em .6em; text-align: left; }
-.markdown-body :deep(img) { max-width: 100%; max-height: 300px; border-radius: 12px; cursor: zoom-in; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: transform 0.2s, box-shadow 0.2s; border: 1px solid rgba(var(--v-theme-on-surface), 0.04); }
+.markdown-body :deep(img) { max-width: 100%; max-height: 280px; border-radius: 12px; cursor: zoom-in; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: transform 0.2s, box-shadow 0.2s; border: 1px solid rgba(var(--v-theme-on-surface), 0.04); object-fit: contain; background: rgba(var(--v-theme-on-surface), 0.02); }
 .markdown-body :deep(img:hover) { transform: scale(1.02); box-shadow: 0 6px 24px rgba(0,0,0,0.1); }
 .markdown-body :deep(a) { color: rgb(var(--v-theme-primary)); text-decoration: none; transition: text-decoration 0.15s, opacity 0.15s; }
 .markdown-body :deep(a:hover) { text-decoration: underline; opacity: 0.85; }
@@ -284,18 +282,32 @@ function handleClick(e: MouseEvent) {
 .markdown-body :deep(.code-block-wrapper:hover .copy-btn) { opacity: 1; }
 .markdown-body :deep(.copy-btn:hover) { background: rgba(var(--v-theme-primary), 0.08); color: rgb(var(--v-theme-primary)); border-color: rgba(var(--v-theme-primary), 0.3); }
 .markdown-body :deep(.carousel-wrap) { position: relative; margin: .5em 0; border-radius: 8px; overflow: hidden; background: rgba(var(--v-theme-on-surface), 0.03); }
-.markdown-body :deep(.img-grid) { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin: .5em 0; }
-.markdown-body :deep(.img-grid-cell) { overflow: hidden; border-radius: 8px; }
-.markdown-body :deep(.img-grid-cell img) { width: 100%; height: 160px; object-fit: cover; cursor: zoom-in; transition: transform 0.2s; }
-.markdown-body :deep(.img-grid-cell img:hover) { transform: scale(1.03); }
-.markdown-body :deep(.img-grid-overflow) { position: relative; cursor: pointer; }
-.markdown-body :deep(.img-grid-overlay) {
-  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); border-radius: 8px;
-  transition: background 0.2s; cursor: pointer;
+.markdown-body :deep(.img-scroll) { margin: .3em 0; position: relative; }
+.markdown-body :deep(.img-scroll-track) {
+  display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
+  scrollbar-width: none; border-radius: 10px; gap: 0;
 }
-.markdown-body :deep(.img-grid-overlay:hover) { background: rgba(0,0,0,0.55); }
-.markdown-body :deep(.img-grid-more) { color: #fff; font-size: 1.5rem; font-weight: 700; }
+.markdown-body :deep(.img-scroll-track::-webkit-scrollbar) { display: none; }
+.markdown-body :deep(.img-scroll-slide) { flex: 0 0 100%; scroll-snap-align: start; display: flex; align-items: center; justify-content: center; background: rgba(var(--v-theme-on-surface), 0.02); min-height: 160px; }
+.markdown-body :deep(.img-scroll-slide img) { width: 100%; max-height: 320px; object-fit: contain; cursor: zoom-in; }
+.markdown-body :deep(.img-scroll-btn) {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+  width: 32px; height: 32px; border-radius: 50%; border: none;
+  background: rgba(0,0,0,0.4); color: #fff; font-size: 1.3rem;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; opacity: 0; transition: opacity 0.2s; line-height: 1;
+}
+.markdown-body :deep(.img-scroll:hover .img-scroll-btn) { opacity: 1; }
+.markdown-body :deep(.img-scroll-btn:hover) { background: rgba(0,0,0,0.6); }
+.markdown-body :deep(.img-scroll-prev) { left: 8px; }
+.markdown-body :deep(.img-scroll-next) { right: 8px; }
+.markdown-body :deep(.img-scroll-dots) {
+  display: flex; gap: 5px; justify-content: center; padding: 6px 0 2px;
+}
+.markdown-body :deep(.img-scroll-dot) {
+  width: 6px; height: 6px; border-radius: 50%; background: rgba(var(--v-theme-primary), 0.25);
+  transition: all 0.2s;
+}
 
 .markdown-body :deep(mark) {
   background: rgba(var(--v-theme-warning), 0.35);
