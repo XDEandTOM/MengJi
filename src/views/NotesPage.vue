@@ -6,7 +6,7 @@ import { useAuthStore } from "@/stores/auth"
 import { authFetch } from "@/utils/api"
 import NoteCard from "@/components/NoteCard.vue"
 import Heatmap from "@/components/Heatmap.vue"
-import SidePanel from "@/components/SidePanel.vue"
+import InlineEditor from "@/components/InlineEditor.vue"
 
 defineProps<{ mobileHeatmap: boolean }>()
 const emit = defineEmits<{ "close-heatmap": [] }>()
@@ -52,6 +52,7 @@ const editingNoteId = ref("")
 const zoomedUpload = ref("")
 const showTrash = ref(false)
 const deletedNotes = ref<Note[]>([])
+const editorRef = ref<any>(null)
 const hasDraft = computed(() => !!(inlineContent.value || uploadedImages.value.length))
 
 const timelineGroups = computed(() => {
@@ -455,66 +456,7 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
         </v-card>
       </v-dialog>
 
-      <div v-if="auth.isLoggedIn" class="inline-editor mb-4">
-        <div class="editor-box" @drop.prevent="onInlineDrop" @dragover.prevent>
-          <div class="md-toolbar">
-            <v-btn icon="mdi-format-bold" size="small" variant="text" class="tool-btn" title="粗体 (Ctrl+B)" @click="insertBold" />
-            <v-btn icon="mdi-format-italic" size="small" variant="text" class="tool-btn" title="斜体 (Ctrl+I)" @click="insertItalic" />
-            <span class="tool-sep" />
-            <v-btn icon="mdi-format-header-pound" size="small" variant="text" class="tool-btn" title="标题" @click="insertHeading" />
-            <v-btn icon="mdi-code-tags" size="small" variant="text" class="tool-btn" title="代码" @click="insertCode" />
-            <v-btn icon="mdi-link-variant" size="small" variant="text" class="tool-btn" title="链接" @click="insertLink" />
-            <span class="tool-sep" />
-            <v-btn icon="mdi-format-list-bulleted" size="small" variant="text" class="tool-btn" title="列表" @click="insertList" />
-            <v-btn icon="mdi-format-list-numbered" size="small" variant="text" class="tool-btn" title="有序列表" @click="insertOrderedList" />
-            <span class="tool-sep" />
-            <v-btn icon="mdi-format-quote-open" size="small" variant="text" class="tool-btn" title="引用" @click="insertQuote" />
-            <v-btn icon="mdi-format-strikethrough-variant" size="small" variant="text" class="tool-btn" title="删除线" @click="insertStrikethrough" />
-            <v-btn icon="mdi-format-list-checks" size="small" variant="text" class="tool-btn" title="待办" @click="insertTodo" />
-            <span class="tool-sep" />
-            <v-btn icon="mdi-code-braces" size="small" variant="text" class="tool-btn" title="代码块" @click="insertCodeBlock" />
-            <v-btn icon="mdi-table" size="small" variant="text" class="tool-btn" title="表格" @click="insertTable" />
-            <v-btn icon="mdi-minus" size="small" variant="text" class="tool-btn" title="分隔线" @click="insertHr" />
-          </div>
-          <textarea ref="inlineTextarea" v-model="inlineContent" class="inline-textarea"
-            placeholder="写点什么呢.." rows="1" @keydown="onInlineKeydown" @paste="onInlinePaste" @input="autoGrowTextarea"></textarea>
-          <div v-if="uploadedImages.length" class="d-flex flex-wrap ga-2 pa-2 pt-0">
-            <div v-for="(img, ii) in uploadedImages" :key="ii" style="position:relative;display:inline-block;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid rgba(var(--v-theme-on-surface),0.08);flex-shrink:0">
-              <img :src="img" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in" @click.stop="zoomedUpload = img" />
-              <v-btn icon="mdi-close-circle" size="x-small" variant="text"
-                style="position:absolute;top:-4px;right:-4px;background:rgb(var(--v-theme-surface));border-radius:50%"
-                @click="uploadedImages.splice(ii, 1)" />
-            </div>
-          </div>
-          <div class="editor-toolbar">
-            <div class="d-flex align-center ga-2">
-              <v-btn icon="mdi-image-plus" size="small" variant="text" class="tool-btn" :loading="inlineUploading" @click="triggerInlineUpload" />
-              <input ref="inlineFileInput" type="file" accept="image/*" multiple hidden @change="onInlineUpload" />
-              <span class="tool-sep-sm" />
-              <v-btn icon="mdi-delete-outline" size="small" variant="text" class="tool-btn"
-                @click="showTrash = !showTrash; if(showTrash) fetchDeletedNotes()" />
-            </div>
-            <v-btn color="primary" size="small" variant="flat" class="rounded-pill submit-btn" @click="submitInline">
-              <v-icon start>mdi-send</v-icon>{{ editingNoteId ? "更新" : "发布" }}
-            </v-btn>
-          </div>
-          <div class="inline-tag-bar">
-              <template v-for="(tag, i) in inlineTagsInput" :key="i">
-                <v-chip size="x-small" closable @click:close="inlineTagsInput.splice(i, 1)">
-                  {{ tag }}
-                </v-chip>
-              </template>
-              <v-text-field v-model="tagInput" variant="plain" hide-details density="compact"
-                placeholder="+ 添加标签" single-line class="tag-input"
-                @keydown.enter.prevent="addTag" />
-            </div>
-          </div>
-        <div v-if="hasDraft && !editingNoteId" class="draft-indicator">
-          <v-icon size="x-small" color="warning">mdi-content-save</v-icon>
-          <span>草稿已自动保存</span>
-        </div>
-      </div>
-
+      <InlineEditor ref="editorRef" />
       <div v-if="!store.loaded" class="d-flex flex-column ga-3 px-1">
         <div v-for="i in 3" :key="i" class="skeleton-card">
           <div class="skeleton-row" style="width:65%" />
