@@ -72,7 +72,7 @@ const userRole = ref("user")
       })
       userAvatar.value = avatar
       localStorage.setItem(AVATAR_KEY, avatar)
-    } catch { /* ignore */ }
+    } catch { console.warn("failed silently") }
   }
 
   async function updateNickname(nickname: string) {
@@ -100,7 +100,7 @@ const userRole = ref("user")
         body: JSON.stringify({ username: userName.value, theme: color }),
       })
       userThemeColor.value = color
-    } catch { /* ignore */ }
+    } catch { console.warn("failed silently") }
   }
 
   async function updateAppIcon(appIcon: string) {
@@ -111,7 +111,7 @@ const userRole = ref("user")
         body: JSON.stringify({ username: userName.value, appIcon }),
       })
       userAppIcon.value = appIcon
-    } catch { /* ignore */ }
+    } catch { console.warn("failed silently") }
   }
 
   async function register(username: string, password: string) {

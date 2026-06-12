@@ -143,6 +143,14 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 			errResp(w, "无效的请求数据", 400)
 			return
 		}
+		if len(n.Content) > 50000 {
+			errResp(w, "内容过长（上限 50000 字符）", 400)
+			return
+		}
+		if len(n.Username) > 50 {
+			errResp(w, "用户名过长", 400)
+			return
+		}
 		if n.Username == "" || n.Username != tokenUser {
 			errResp(w, "unauthorized", 401)
 			return
@@ -360,7 +368,11 @@ func handleTrash(w http.ResponseWriter, r *http.Request, path string) {
 			errResp(w, "unauthorized", 401)
 			return
 		}
-		rows, err := db.Query("SELECT id, content, created_at, updated_at, pinned, tags, username, avatar, nickname, deleted_at FROM trash WHERE username=? ORDER BY deleted_at DESC", username)
+		limit := 50
+		offset := 0
+		if l := r.URL.Query().Get("limit"); l != "" { fmt.Sscanf(l, "%d", &limit) }
+		if o := r.URL.Query().Get("offset"); o != "" { fmt.Sscanf(o, "%d", &offset) }
+		rows, err := db.Query("SELECT id, content, created_at, updated_at, pinned, tags, username, avatar, nickname, deleted_at FROM trash WHERE username=? ORDER BY deleted_at DESC LIMIT ? OFFSET ?", username, limit, offset)
 		if err != nil {
 			errResp(w, "查询数据时发生错误", 500)
 			return

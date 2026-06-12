@@ -57,7 +57,6 @@ const hasDraft = computed(() => !!(inlineContent.value || uploadedImages.value.l
 const timelineGroups = computed(() => {
   const groups: { date: string; notes: Note[] }[] = []
   const today = new Date()
-  const todayStr = today.toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "short" })
   for (const note of store.notes) {
     const d = new Date(note.createdAt)
     let label: string
@@ -564,13 +563,13 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
           <p v-if="!localSearch && !selectedTag && !selectedDay" class="empty-text-hint">点击上方编辑框，写下你的第一段记忆吧 ✨</p>
         </div>
         <Transition name="view-fade" mode="out-in">
-          <div v-if="viewMode === 'list'" class="d-flex flex-column ga-4" key="list">
+          <div v-if="viewMode === 'list'" key="list" class="d-flex flex-column ga-4">
             <div v-for="(note, idx) in store.notes" :key="note.id" class="note-drag-wrapper"
               :style="{ animationDelay: `${idx * 0.05}s` }" :data-note-id="note.id">
               <NoteCard :memo="note" :search-query="localSearch" :logged-in="auth.isLoggedIn" @edit="handleEdit" @move-pin="movePinnedNote" />
             </div>
           </div>
-          <div v-else class="timeline-view" key="timeline">
+          <div v-else key="timeline" class="timeline-view">
             <div v-for="(group, gi) in timelineGroups" :key="gi" class="timeline-group">
               <div class="timeline-date-label">{{ group.date }}</div>
               <div class="timeline-line" />

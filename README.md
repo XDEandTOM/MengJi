@@ -1,6 +1,6 @@
 <div align="center">
   <br/>
-  <img src="https://img.shields.io/badge/v1.4.5-1976D2?style=flat-square&label=latest" alt="v1.4.5"/>
+  <img src="https://img.shields.io/badge/v1.9.0-1976D2?style=flat-square&label=latest" alt="v1.9.0"/>
   <img src="https://img.shields.io/github/last-commit/Linraintong/SuiSui?style=flat-square&color=4CAF50" alt="Last Commit"/>
   <img src="https://img.shields.io/github/license/Linraintong/SuiSui?style=flat-square" alt="License"/>
   <img src="https://img.shields.io/github/repo-size/Linraintong/SuiSui?style=flat-square&color=FF9800" alt="Repo Size"/>
@@ -106,19 +106,25 @@ npm run build
 cd server-go && go build -o suisui .
 
 # 运行
-./suisui                    # 默认端口 3001
+./suisui                    # 默认端口 3742
 ./suisui -port 8080         # 自定义端口
 PORT=8080 ./suisui          # 环境变量
 ```
 
 ### 🐳 Docker
 ```bash
+# 一键安装
+curl -sSL https://raw.githubusercontent.com/Linraintong/SuiSui/main/install.sh | bash
+
+# 或手动运行
 docker run -d --name suisui \
   --cpus="0.5" --memory="256m" \
-  -p 3001:3001 \
+  -p 3742:3742 \
   -v /opt/suisui:/data \
   linyumeng/suisui:latest
 ```
+
+> HTTPS 可通过后台「系统设置 → 服务器配置」上传证书并启用，无需额外配置。
 
 ---
 

@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { computed } from "vue"
 import Heatmap from "./Heatmap.vue"
-import type { Note } from "@/stores/notes"
 
-const props = defineProps<{
+defineProps<{
   search: string
   selectedTag: string
   selectedDay: string
@@ -23,13 +21,17 @@ function tagColor(tag: string) {
   let h = 0; for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) | 0
   return TAG_COLORS[Math.abs(h) % TAG_COLORS.length]
 }
+
+function openGithub() {
+  window.open("https://github.com/Linraintong/SuiSui", "_blank")
+}
 </script>
 
 <template>
   <div class="side-content">
-    <v-text-field :model-value="search" @update:model-value="v => emit('update:search', v)"
-      prepend-inner-icon="mdi-magnify" label="搜索备忘..." variant="outlined" hide-details density="compact"
-      clearable class="mb-3 rounded-search search-border" data-search-input />
+    <v-text-field :model-value="search" prepend-inner-icon="mdi-magnify"
+      label="搜索备忘..." variant="outlined" hide-details density="compact" clearable
+      class="mb-3 rounded-search search-border" data-search-input @update:model-value="v => emit('update:search', v)" />
     <Heatmap class="mb-4" style="border-color:#424242 !important" @select-day="emit('update:selectedDay', $event)" />
     <v-card variant="outlined" class="rounded-xl pa-4 side-card">
       <div class="d-flex align-center ga-2 mb-3">
@@ -61,7 +63,7 @@ function tagColor(tag: string) {
       </div>
     </v-card>
     <div v-if="versionText" class="d-flex justify-center mt-2">
-      <v-chip size="x-small" variant="tonal" color="primary" class="version-chip" style="cursor:pointer" prepend-icon="mdi-github">
+      <v-chip size="x-small" variant="tonal" color="primary" class="version-chip" style="cursor:pointer" prepend-icon="mdi-github" @click="openGithub">
         {{ versionText }}
       </v-chip>
     </div>

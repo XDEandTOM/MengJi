@@ -54,7 +54,7 @@ async function loadSiteTitle() {
         document.head.appendChild(link)
       }
     }
-  } catch { /* ignore */ }
+  } catch { console.warn("failed silently") }
 }
 
 function toggleTheme() {
@@ -93,6 +93,8 @@ watch(() => vuetifyTheme.global.name.value, (val) => {
 watch([() => auth.isLoggedIn, () => auth.userRole], () => {
   if (!auth.isLoggedIn || auth.userRole !== "admin") showAdmin.value = false
 })
+
+function isImage(val?: string) { return val?.startsWith("/uploads/") || val?.startsWith("http") }
 </script>
 
 <template>
@@ -111,7 +113,10 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
 
       <!-- User avatar & name in sidebar -->
       <div v-if="auth.ready && auth.isLoggedIn" class="sidebar-user">
-        <v-avatar size="36" color="primary" variant="tonal" class="sidebar-avatar" style="cursor:pointer"
+        <div v-if="isImage(auth.userAvatar)" class="sidebar-avatar-img" @click="showProfile = true">
+          <img :src="auth.userAvatar" alt="" width="36" height="36" style="border-radius:10px;object-fit:cover;cursor:pointer" />
+        </div>
+        <v-avatar v-else size="36" color="primary" variant="tonal" class="sidebar-avatar" style="cursor:pointer"
           @click="showProfile = true">
           <span class="sidebar-avatar-text">{{ avatarLetter }}</span>
         </v-avatar>
@@ -137,13 +142,19 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
     <!-- Mobile bottom bar -->
     <div v-if="isMobile" class="mobile-bottom-bar">
       <div class="mobile-bar-inner">
-        <template v-if="auth.isLoggedIn && auth.userAppIcon">
-          <v-img :src="auth.userAppIcon" width="22" height="22" class="mobile-bar-icon" />
+        <template v-if="auth.ready && auth.isLoggedIn">
+          <div class="d-flex align-center ga-1" style="cursor:pointer" @click="showProfile = true">
+            <div v-if="isImage(auth.userAvatar)" class="mobile-avatar">
+              <img :src="auth.userAvatar" alt="" width="26" height="26" style="border-radius:6px;object-fit:cover" />
+            </div>
+            <div v-else class="mobile-avatar-fallback">{{ avatarLetter }}</div>
+          </div>
         </template>
         <template v-else>
           <AppLogo :size="22" />
         </template>
         <v-spacer />
+        <v-btn icon="mdi-palette-outline" variant="text" size="small" class="mobile-bar-btn" @click.stop="showThemePicker = true" />
         <v-btn icon="mdi-theme-light-dark" variant="text" size="small" class="mobile-bar-btn" @click.stop="toggleTheme" />
         <v-btn icon="mdi-fire" variant="text" size="small" class="mobile-bar-btn"
           :color="showMobileHeatmap ? 'primary' : undefined"
@@ -180,7 +191,9 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
           <v-text-field v-model="nickEdit" label="昵称" variant="outlined" hide-details density="compact"
             :disabled="savingNick" @keydown.enter="saveNickname" />
           <v-btn color="primary" variant="flat" size="small" class="rounded-pill align-self-start"
-            :loading="savingNick" @click="saveNickname">保存昵称</v-btn>
+            :loading="savingNick" @click="saveNickname">
+保存昵称
+</v-btn>
         </div>
       </v-card>
     </v-dialog>
@@ -190,6 +203,7 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
 <style>
 /* Font variable for code blocks */
 :root { --code-font: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; }
+html, body { font-family: "Maple Mono NF CN", -apple-system, BlinkMacSystemFont, sans-serif; }
 ::selection { background: rgba(var(--v-theme-primary), 0.25); }
 .main-bg {
   min-height: 100vh;
@@ -248,6 +262,8 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
   cursor: pointer;
   transition: transform 0.2s;
 }
+.sidebar-avatar-img { width: 36px; height: 36px; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(var(--v-theme-primary), 0.15); cursor: pointer; transition: transform 0.2s; }
+.sidebar-avatar-img:hover { transform: scale(1.1); }
 .sidebar-avatar:hover { transform: scale(1.1); }
 .sidebar-avatar-text { font-size: 0.85rem; font-weight: 600; color: rgb(var(--v-theme-on-surface)); }
 .sidebar-username {
@@ -297,4 +313,11 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
 .mobile-bar-icon { border-radius: 6px; }
 .mobile-bar-btn { opacity: 0.55; transition: opacity 0.2s; }
 .mobile-bar-btn:active { opacity: 1; }
+.mobile-avatar { display: flex; align-items: center; }
+.mobile-avatar-fallback {
+  width: 26px; height: 26px; border-radius: 6px; display: flex;
+  align-items: center; justify-content: center;
+  background: rgb(var(--v-theme-primary)); color: #fff;
+  font-size: 0.75rem; font-weight: 600; flex-shrink: 0;
+}
 </style>

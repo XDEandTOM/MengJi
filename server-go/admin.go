@@ -3,9 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 )
 
 func handleSettings(w http.ResponseWriter, r *http.Request) {
@@ -151,6 +155,63 @@ func handleAdmin(w http.ResponseWriter, r *http.Request, path string) {
 			userList = []adminUserResponse{}
 		}
 		jsonResp(w, adminUserListResponse{Users: userList, Total: total, Page: page, PerPage: perPage})
+
+	case path == "/admin/config/ssl" && r.Method == "POST":
+		tokenUser, tokenValid := verifyToken(r)
+		if !tokenValid { errResp(w, "unauthorized", 401); return }
+		var callerRole string
+		db.QueryRow("SELECT role FROM users WHERE username=?", tokenUser).Scan(&callerRole)
+		if callerRole != "admin" { errResp(w, "forbidden", 403); return }
+
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			errResp(w, "文件过大", 400); return
+		}
+		certFile, _, err := r.FormFile("cert")
+		if err != nil { errResp(w, "缺少证书文件", 400); return }
+		defer certFile.Close()
+		certData, _ := io.ReadAll(certFile)
+		if err := os.WriteFile(filepath.Join(dataDir, "cert.pem"), certData, 0644); err != nil {
+			errResp(w, "证书保存失败", 500); return
+		}
+
+		keyFile, _, err := r.FormFile("key")
+		if err != nil { errResp(w, "缺少私钥文件", 400); return }
+		defer keyFile.Close()
+		keyData, _ := io.ReadAll(keyFile)
+		if err := os.WriteFile(filepath.Join(dataDir, "key.pem"), keyData, 0644); err != nil {
+			errResp(w, "私钥保存失败", 500); return
+		}
+
+		// Save config so server picks it up on restart
+		cfg := map[string]string{"cert": "cert.pem", "key": "key.pem"}
+		cfgData, _ := json.Marshal(cfg)
+		os.WriteFile(filepath.Join(dataDir, "server.json"), cfgData, 0644)
+
+		jsonResp(w, successResponse{Success: "ok"})
+
+	case path == "/admin/config/ssl" && r.Method == "DELETE":
+		tokenUser, tokenValid := verifyToken(r)
+		if !tokenValid { errResp(w, "unauthorized", 401); return }
+		var callerRole string
+		db.QueryRow("SELECT role FROM users WHERE username=?", tokenUser).Scan(&callerRole)
+		if callerRole != "admin" { errResp(w, "forbidden", 403); return }
+
+		os.Remove(filepath.Join(dataDir, "server.json"))
+		jsonResp(w, successResponse{Success: "ok"})
+
+	case path == "/admin/restart" && r.Method == "POST":
+		tokenUser, tokenValid := verifyToken(r)
+		if !tokenValid { errResp(w, "unauthorized", 401); return }
+		var callerRole string
+		db.QueryRow("SELECT role FROM users WHERE username=?", tokenUser).Scan(&callerRole)
+		if callerRole != "admin" { errResp(w, "forbidden", 403); return }
+
+		jsonResp(w, successResponse{Success: "ok"})
+		// Graceful shutdown — Docker will auto-restart
+		go func() {
+			time.Sleep(500 * time.Millisecond)
+			os.Exit(0)
+		}()
 
 	default:
 		parts := strings.Split(strings.TrimPrefix(path, "/admin/users/"), "/")

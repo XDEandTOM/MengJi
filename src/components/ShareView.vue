@@ -175,12 +175,16 @@ function toggleReaction(emoji: string) {
               <div class="d-flex ga-1 pa-2" style="border-bottom:1px solid rgba(var(--v-theme-on-surface),0.08);overflow-x:auto">
                 <v-btn v-for="cat in emojiCategories" :key="cat.id" size="x-small" variant="text"
                   :class="['cat-btn', { active: activeEmojiCat === cat.id }]"
-                  @click="activeEmojiCat = cat.id">{{ cat.icon }}</v-btn>
+                  @click="activeEmojiCat = cat.id">
+{{ cat.icon }}
+</v-btn>
               </div>
               <div class="emoji-grid pa-2">
                 <v-btn v-for="(e, ei) in emojiCategories.find(c => c.id === activeEmojiCat)?.list || []" :key="activeEmojiCat + '-' + ei"
                   size="x-small" variant="text" class="emoji-btn"
-                  @click="toggleReaction(e); showEmojiPicker = false">{{ e }}</v-btn>
+                  @click="toggleReaction(e); showEmojiPicker = false">
+{{ e }}
+</v-btn>
               </div>
             </div>
           </v-menu>

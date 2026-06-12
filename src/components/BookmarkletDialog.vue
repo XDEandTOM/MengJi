@@ -9,7 +9,7 @@ const bookmarkletCode = `javascript:(function(){
 </script>
 
 <template>
-  <v-dialog :model-value="visible" @update:model-value="v => visible = v" max-width="420">
+  <v-dialog :model-value="visible" max-width="420" @update:model-value="v => visible = v">
     <v-card class="rounded-xl pa-4">
       <div class="d-flex align-center mb-3">
         <span class="text-subtitle-2 font-weight-medium">🔖 网页剪藏</span>

@@ -68,6 +68,50 @@ marked.setOptions({ breaks: true, gfm: true })
 const emit = defineEmits<{ "todo-toggle": [idx: number] }>()
 const props = defineProps<{ content: string; searchQuery?: string }>()
 const zoomedImage = ref("")
+const expandedGrids = ref<Set<string>>(new Set())
+const loadedRepos = ref<Set<string>>(new Set())
+const githubRepos = ref<Record<string, { name: string; fullName: string; description: string; stars: number; language: string; license: string; url: string }>>({})
+
+function extractGitHubRepos(text: string): string[] {
+  const matches = text.matchAll(/https?:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\b/g)
+  const repos = new Set<string>()
+  for (const m of matches) repos.add(`${m[1]}/${m[2]}`)
+  return [...repos]
+}
+
+async function fetchGitHubRepos() {
+  const repos = extractGitHubRepos(props.content)
+  if (!repos.length) return
+  for (const fullName of repos) {
+    if (githubRepos.value[fullName]) continue
+    try {
+      const res = await fetch(`https://api.github.com/repos/${fullName}`)
+      if (!res.ok) continue
+      const d = await res.json()
+      githubRepos.value = { ...githubRepos.value, [fullName]: {
+        name: d.name, fullName: d.full_name, description: d.description || "",
+        stars: d.stargazers_count, language: d.language || "",
+        license: d.license?.spdx_id || "", url: d.html_url,
+      }}
+      loadedRepos.value = new Set(loadedRepos.value).add(fullName)
+    } catch { console.warn("failed silently") }
+  }
+}
+
+watch(() => props.content, () => { githubRepos.value = {}; fetchGitHubRepos() }, { immediate: false })
+onMounted(fetchGitHubRepos)
+
+const LANG_COLORS: Record<string, string> = {
+  TypeScript: "#3178C6", JavaScript: "#F7DF1E", Python: "#3572A5", Go: "#00ADD8",
+  Rust: "#DEA584", Java: "#B07219", C: "#555555", "C++": "#F34B7D", "C#": "#178600",
+  Ruby: "#701516", PHP: "#4F5D95", Swift: "#FFAC45", Kotlin: "#A97BFF",
+  Dart: "#00B4AB", Lua: "#000080", Shell: "#89E051", HTML: "#E34F26", CSS: "#563D7C",
+  Vue: "#41B883", Solid: "#2C4F7C", Svelte: "#FF3E00", Scala: "#C22D40",
+  Elixir: "#6E4A7E", Clojure: "#DB5855", Haskell: "#5E5086", R: "#198CE7",
+}
+function langColor(lang: string): string {
+  return LANG_COLORS[lang] || "rgba(var(--v-theme-on-surface), 0.3)"
+}
 
 function highlightText(text: string, query: string): string {
   if (!text) return text
@@ -83,18 +127,32 @@ function highlightText(text: string, query: string): string {
 
 const rendered = computed(() => {
   todoIndex = 0
+  // Ensure reactivity when grids are expanded or repos loaded
+  void expandedGrids.value.has(""); void loadedRepos.value.has("");
   try {
-    let html = marked(highlightText(props.content, props.searchQuery || ""), { renderer }) as string
+    // Strip loaded GitHub URLs from content
+    let content = props.content
+    for (const repo of loadedRepos.value) {
+      content = content.replace(new RegExp(`https?://github\\.com/${repo.replace("/", "\\/")}\\b`, "g"), "").trim()
+    }
+    let html = marked(highlightText(content, props.searchQuery || ""), { renderer }) as string
     let carouselIdx = 0
     html = html.replace(/((?:<p><img[^>]*><\/p>\s*)+)/g, (match) => {
       const images = match.match(/<img[^>]*>/g)
       if (!images || images.length < 2) return match
       const id = "c" + carouselIdx++
-      return `<div class="carousel-wrap" data-id="${id}">
-        <div class="carousel-track">${images.map((img, i) => `<div class="carousel-slide" data-idx="${i}">${img}</div>`).join("")}</div>
-        <button class="carousel-btn carousel-prev" data-id="${id}">‹</button>
-        <button class="carousel-btn carousel-next" data-id="${id}">›</button>
-        <div class="carousel-dots">${images.map((_, i) => `<span class="carousel-dot" data-id="${id}" data-idx="${i}"></span>`).join("")}</div>
+      const maxVisible = 4
+      const isExpanded = expandedGrids.value.has(id)
+      const visible = isExpanded ? images : images.slice(0, maxVisible)
+      const remaining = images.length - maxVisible
+      return `<div class="img-grid${remaining > 0 && !isExpanded ? ' has-more' : ''}" data-id="${id}">
+        ${visible.map((img, i) => {
+          const isLast = i === maxVisible - 1 && remaining > 0 && !isExpanded
+          return `<div class="img-grid-cell${isLast ? ' img-grid-overflow' : ''}">
+            ${img}
+            ${isLast ? `<div class="img-grid-overlay" data-id="${id}"><span class="img-grid-more">+${remaining}</span></div>` : ''}
+          </div>`
+        }).join("")}
       </div>`
     })
     return html
@@ -110,21 +168,16 @@ function handleClick(e: MouseEvent) {
     emit("todo-toggle", idx)
     return
   }
-  const img = target.closest("img") as HTMLImageElement
-  if (img) { zoomedImage.value = img.src; return }
-  const btn = target.closest(".carousel-btn") as HTMLElement
-  if (btn) {
-    const wrap = btn.closest(".carousel-wrap") as HTMLElement
-    if (!wrap) return
-    const track = wrap.querySelector(".carousel-track") as HTMLElement
-    const slides = track.querySelectorAll(".carousel-slide")
-    const current = Math.round(track.scrollLeft / track.clientWidth)
-    const isNext = btn.classList.contains("carousel-next")
-    const next = isNext ? Math.min(current + 1, slides.length - 1) : Math.max(current - 1, 0)
-    track.scrollTo({ left: next * track.clientWidth, behavior: "smooth" })
-    wrap.querySelectorAll(".carousel-dot").forEach((d, i) => { (d as HTMLElement).style.opacity = i === next ? "1" : "0.35" })
+  // Expand image grid
+  const cell = target.closest(".img-grid-overflow") as HTMLElement
+  if (cell) {
+    const grid = cell.closest(".img-grid") as HTMLElement
+    const id = grid?.getAttribute("data-id")
+    if (id) { expandedGrids.value.add(id); expandedGrids.value = new Set(expandedGrids.value) }
     return
   }
+  const img = target.closest("img") as HTMLImageElement
+  if (img) { zoomedImage.value = img.src; return }
   const copyBtn = target.closest(".copy-btn") as HTMLElement
   if (!copyBtn) return
   const raw = copyBtn.getAttribute("data-code")
@@ -154,7 +207,21 @@ function handleClick(e: MouseEvent) {
 </script>
 
 <template>
-  <div class="markdown-body" @click="handleClick" v-html="rendered" />
+  <div class="markdown-body" @click="handleClick" v-html="rendered" /><!-- eslint-disable-line vue/no-v-html -->
+  <div v-for="(repo, key) in githubRepos" :key="key" class="gh-card">
+    <a :href="repo.url" target="_blank" rel="noopener" class="gh-card-inner">
+      <div class="gh-card-header">
+        <span class="gh-icon"><v-icon size="small">mdi-github</v-icon></span>
+        <span class="gh-name">{{ repo.name }}</span>
+      </div>
+      <div v-if="repo.description" class="gh-desc">{{ repo.description }}</div>
+      <div class="gh-meta">
+        <span v-if="repo.language" class="gh-meta-item"><span class="gh-lang-dot" :style="{ background: langColor(repo.language) }" />{{ repo.language }}</span>
+        <span class="gh-meta-item">⭐ {{ repo.stars >= 1000 ? (repo.stars / 1000).toFixed(1) + 'k' : repo.stars }}</span>
+        <span v-if="repo.license" class="gh-meta-item">{{ repo.license }}</span>
+      </div>
+    </a>
+  </div>
   <teleport to="body">
     <div v-if="zoomedImage" class="zoom-overlay" @click="zoomedImage = ''">
       <button class="zoom-close-btn" @click.stop="zoomedImage = ''">
@@ -180,8 +247,8 @@ function handleClick(e: MouseEvent) {
 .markdown-body :deep(pre code) { background: none; padding: 0; font-size: .85em; font-family: var(--code-font); }
 .markdown-body :deep(table) { border-collapse: collapse; width: 100%; margin: .5em 0; }
 .markdown-body :deep(th),.markdown-body :deep(td) { border: 1px solid rgba(var(--v-theme-on-surface),.15); padding: .4em .6em; text-align: left; }
-.markdown-body :deep(img) { max-width: 100%; max-height: 220px; border-radius: 10px; cursor: zoom-in; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: transform 0.2s, box-shadow 0.2s; }
-.markdown-body :deep(img:hover) { transform: scale(1.01); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+.markdown-body :deep(img) { max-width: 100%; max-height: 300px; border-radius: 12px; cursor: zoom-in; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: transform 0.2s, box-shadow 0.2s; border: 1px solid rgba(var(--v-theme-on-surface), 0.04); }
+.markdown-body :deep(img:hover) { transform: scale(1.02); box-shadow: 0 6px 24px rgba(0,0,0,0.1); }
 .markdown-body :deep(a) { color: rgb(var(--v-theme-primary)); text-decoration: none; transition: text-decoration 0.15s, opacity 0.15s; }
 .markdown-body :deep(a:hover) { text-decoration: underline; opacity: 0.85; }
 .markdown-body :deep(.code-block-wrapper) { position: relative; margin: .5em 0; border-radius: 10px; overflow: hidden; border: 1px solid rgba(var(--v-theme-on-surface), 0.06); }
@@ -217,23 +284,18 @@ function handleClick(e: MouseEvent) {
 .markdown-body :deep(.code-block-wrapper:hover .copy-btn) { opacity: 1; }
 .markdown-body :deep(.copy-btn:hover) { background: rgba(var(--v-theme-primary), 0.08); color: rgb(var(--v-theme-primary)); border-color: rgba(var(--v-theme-primary), 0.3); }
 .markdown-body :deep(.carousel-wrap) { position: relative; margin: .5em 0; border-radius: 8px; overflow: hidden; background: rgba(var(--v-theme-on-surface), 0.03); }
-.markdown-body :deep(.carousel-track) { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
-.markdown-body :deep(.carousel-track::-webkit-scrollbar) { display: none; }
-.markdown-body :deep(.carousel-slide) { flex: 0 0 100%; scroll-snap-align: start; display: flex; align-items: center; justify-content: center; }
-.markdown-body :deep(.carousel-slide img) { max-height: 220px; width: 100%; object-fit: contain; cursor: zoom-in; }
-.markdown-body :deep(.carousel-btn) {
-  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
-  width: 32px; height: 32px; border-radius: 50%; border: none;
-  background: rgba(0,0,0,0.45); color: #fff; font-size: 1.3rem;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; opacity: 0; transition: opacity 0.2s; line-height: 1;
+.markdown-body :deep(.img-grid) { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin: .5em 0; }
+.markdown-body :deep(.img-grid-cell) { overflow: hidden; border-radius: 8px; }
+.markdown-body :deep(.img-grid-cell img) { width: 100%; height: 160px; object-fit: cover; cursor: zoom-in; transition: transform 0.2s; }
+.markdown-body :deep(.img-grid-cell img:hover) { transform: scale(1.03); }
+.markdown-body :deep(.img-grid-overflow) { position: relative; cursor: pointer; }
+.markdown-body :deep(.img-grid-overlay) {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); border-radius: 8px;
+  transition: background 0.2s; cursor: pointer;
 }
-.markdown-body :deep(.carousel-wrap:hover .carousel-btn) { opacity: 1; }
-.markdown-body :deep(.carousel-btn:hover) { background: rgba(0,0,0,0.65); }
-.markdown-body :deep(.carousel-prev) { left: 8px; }
-.markdown-body :deep(.carousel-next) { right: 8px; }
-.markdown-body :deep(.carousel-dots) { display: flex; gap: 6px; justify-content: center; padding: 8px; }
-.markdown-body :deep(.carousel-dot) { width: 8px; height: 8px; border-radius: 50%; background: rgb(var(--v-theme-primary)); opacity: 0.35; cursor: pointer; transition: opacity 0.2s; }
+.markdown-body :deep(.img-grid-overlay:hover) { background: rgba(0,0,0,0.55); }
+.markdown-body :deep(.img-grid-more) { color: #fff; font-size: 1.5rem; font-weight: 700; }
 
 .markdown-body :deep(mark) {
   background: rgba(var(--v-theme-warning), 0.35);
@@ -307,6 +369,26 @@ function handleClick(e: MouseEvent) {
   opacity: 0.55;
 }
 </style>
+
+<style>
+/* GitHub repo card */
+.gh-card { margin: .5em 0; }
+.gh-card-inner {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 12px 16px; border-radius: 12px; text-decoration: none;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-surface), 0.5);
+  backdrop-filter: blur(8px); transition: all 0.15s;
+  color: rgb(var(--v-theme-on-surface));
+}
+.gh-card-inner:hover { border-color: rgba(var(--v-theme-primary), 0.2); background: rgba(var(--v-theme-surface), 0.65); }
+.gh-card-header { display: flex; align-items: center; gap: 6px; }
+.gh-icon { opacity: 0.4; display: flex; }
+.gh-name { font-weight: 600; font-size: 0.9rem; }
+.gh-desc { font-size: 0.8rem; opacity: 0.7; line-height: 1.4; }
+.gh-meta { display: flex; align-items: center; gap: 12px; font-size: 0.75rem; opacity: 0.5; }
+.gh-meta-item { display: flex; align-items: center; gap: 4px; }
+.gh-lang-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
 <style>
 .zoom-overlay {

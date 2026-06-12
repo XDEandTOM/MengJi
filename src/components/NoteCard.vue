@@ -181,8 +181,8 @@ function copyShareLink() {
           <v-btn icon="mdi-share-variant" size="x-small" variant="text" class="action-btn"
             @click="shareNote" />
           <v-menu location="bottom">
-            <template #activator="{ props }">
-              <v-btn icon="mdi-dots-horizontal" size="x-small" variant="text" class="action-btn" v-bind="props" />
+            <template #activator="{ props: menuProps }">
+              <v-btn icon="mdi-dots-horizontal" size="x-small" variant="text" class="action-btn" v-bind="menuProps" />
             </template>
             <v-list density="compact" class="pa-1">
               <v-list-item density="compact" @click="copyContent">
