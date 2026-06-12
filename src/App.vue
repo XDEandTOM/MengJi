@@ -8,6 +8,7 @@ const AdminPage = defineAsyncComponent(() => import("@/views/AdminPage.vue"))
 import LoginDialog from "@/components/LoginDialog.vue"
 import AppLogo from "@/components/AppLogo.vue"
 import ShareView from "@/components/ShareView.vue"
+import ThemePicker from "@/components/ThemePicker.vue"
 
 const isShareView = computed(() => window.location.pathname.startsWith("/share/"))
 
@@ -18,6 +19,7 @@ const auth = useAuthStore()
 const showAdmin = ref(false)
 const showLogin = ref(false)
 const showProfile = ref(false)
+const showThemePicker = ref(false)
 const showMobileHeatmap = ref(false)
 const nickEdit = ref("")
 const savingNick = ref(false)
@@ -116,6 +118,7 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
 
       <div class="sidebar-middle" />
       <div class="sidebar-bottom">
+        <v-btn icon="mdi-palette-outline" variant="text" size="small" class="sidebar-btn" @click.stop="showThemePicker = true" />
         <v-btn icon="mdi-theme-light-dark" variant="text" size="small" class="sidebar-btn" @click.stop="toggleTheme" />
         <template v-if="auth.ready && auth.isLoggedIn">
           <v-btn icon="mdi-cog-outline" variant="text" size="small" class="sidebar-btn"
@@ -161,6 +164,7 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
       <v-progress-circular indeterminate color="primary" />
     </v-main>
     <LoginDialog v-model="showLogin" />
+    <ThemePicker v-model="showThemePicker" />
     <v-dialog v-model="showProfile" max-width="420">
       <v-card class="rounded-xl pa-4">
         <div class="d-flex align-center mb-3">
@@ -180,7 +184,15 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
 </template>
 
 <style>
-.main-bg { min-height: 100vh; background: rgb(var(--v-theme-background)); }
+/* Font variable for code blocks */
+:root { --code-font: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; }
+.main-bg {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(var(--v-theme-primary), 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(var(--v-theme-primary), 0.04) 0%, transparent 50%),
+    rgb(var(--v-theme-background));
+}
 .main-bg.has-sidebar { margin-left: 64px; }
 .main-bg.has-bottom-bar { margin-left: 0; padding-bottom: 56px; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -201,7 +213,9 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
   align-items: center;
   padding: 12px 0;
   border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgb(var(--v-theme-surface));
+  background: rgba(var(--v-theme-surface), 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   z-index: 100;
   gap: 4px;
 }
@@ -258,7 +272,9 @@ watch([() => auth.isLoggedIn, () => auth.userRole], () => {
   right: 0;
   height: 56px;
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgb(var(--v-theme-surface));
+  background: rgba(var(--v-theme-surface), 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   z-index: 100;
   padding: 0 12px;
 }

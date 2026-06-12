@@ -191,7 +191,10 @@ function toggleReaction(emoji: string) {
 <style scoped>
 .share-page {
   min-height: 100vh;
-  background: rgb(var(--v-theme-background));
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(var(--v-theme-primary), 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(var(--v-theme-primary), 0.04) 0%, transparent 50%),
+    rgb(var(--v-theme-background));
 }
 .share-header {
   display: flex;
@@ -224,7 +227,9 @@ function toggleReaction(emoji: string) {
 .share-note-card {
   width: 100%;
   max-width: 560px;
-  background: rgb(var(--v-theme-surface));
+  background: rgba(var(--v-theme-surface), 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   border-radius: 12px;
   padding: 14px 18px 10px;

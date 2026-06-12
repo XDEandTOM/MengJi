@@ -160,9 +160,9 @@ function handleClick(e: MouseEvent) {
 .markdown-body :deep(p) { margin: .3em 0; }
 .markdown-body :deep(ul),.markdown-body :deep(ol) { padding-left: 1.4em; margin: .3em 0; }
 .markdown-body :deep(blockquote) { border-left: 3px solid rgba(var(--v-theme-primary),.5); padding-left: .75em; margin: .4em 0; opacity: .85; }
-.markdown-body :deep(code) { background: rgba(var(--v-theme-on-surface),.08); border-radius: 4px; padding: .15em .4em; font-size: .9em; }
+.markdown-body :deep(code) { background: rgba(var(--v-theme-on-surface),.08); border-radius: 4px; padding: .15em .4em; font-size: .9em; font-family: var(--code-font); }
 .markdown-body :deep(pre) { background: rgba(var(--v-theme-on-surface),.05); border-radius: 8px; padding: .75em 1em; overflow-x: auto; margin: .5em 0; }
-.markdown-body :deep(pre code) { background: none; padding: 0; font-size: .85em; }
+.markdown-body :deep(pre code) { background: none; padding: 0; font-size: .85em; font-family: var(--code-font); }
 .markdown-body :deep(table) { border-collapse: collapse; width: 100%; margin: .5em 0; }
 .markdown-body :deep(th),.markdown-body :deep(td) { border: 1px solid rgba(var(--v-theme-on-surface),.15); padding: .4em .6em; text-align: left; }
 .markdown-body :deep(img) { max-width: 100%; max-height: 220px; border-radius: 6px; cursor: zoom-in; }

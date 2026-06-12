@@ -270,6 +270,9 @@ function copyShareLink() {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  background: rgba(var(--v-theme-surface), 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 .memo-card:hover {
   border-color: rgba(var(--v-theme-primary), 0.2);

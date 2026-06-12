@@ -399,7 +399,10 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
             <v-spacer />
             <v-btn icon="mdi-close" size="x-small" variant="text" @click="showTrash = false" />
           </div>
-          <div v-if="!deletedNotes.length" class="text-caption text-medium-emphasis py-4 text-center">回收站为空</div>
+          <div v-if="!deletedNotes.length" class="d-flex flex-column align-center py-4 text-medium-emphasis">
+            <v-icon size="32" class="mb-2" color="rgba(var(--v-theme-on-surface),0.15)">mdi-delete-outline</v-icon>
+            <span class="text-caption">回收站为空</span>
+          </div>
           <div v-else class="d-flex flex-column ga-2">
             <div v-for="note in deletedNotes" :key="note.id" class="d-flex align-center ga-2 pa-2"
               style="border-bottom:1px solid rgba(var(--v-theme-on-surface),0.06)">
@@ -483,15 +486,30 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
           <v-btn icon="mdi-close" size="x-small" variant="text" @click="selectedDay = ''" />
         </div>
         <div v-if="store.notes.length === 0" class="empty-state">
-          <div class="empty-icon-wrap">
-            <v-icon size="48" color="rgba(var(--v-theme-on-surface),0.12)">mdi-pencil-box-multiple-outline</v-icon>
+          <div class="empty-illust">
+            <template v-if="localSearch || selectedTag || selectedDay">
+              <div class="empty-illust-inner search-empty">
+                <v-icon size="40" class="empty-icon-main">mdi-magnify</v-icon>
+                <div class="empty-icon-sub">
+                  <v-icon size="18" color="error">mdi-emoticon-sad-outline</v-icon>
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <div class="empty-illust-inner notes-empty">
+                <v-icon size="44" class="empty-icon-main">mdi-pencil-box-multiple-outline</v-icon>
+                <div class="empty-icon-sparkle"><v-icon size="12" color="warning">mdi-sparkles</v-icon></div>
+                <div class="empty-icon-sparkle sparkle-2"><v-icon size="10" color="primary">mdi-sparkles</v-icon></div>
+              </div>
+            </template>
           </div>
-          <p v-if="localSearch || selectedTag || selectedDay" class="text-body-1 font-weight-medium mb-1">没有找到匹配的碎片笔记</p>
-          <p v-else class="text-body-1 font-weight-medium mb-1">还没有碎片笔记</p>
-          <p v-if="!localSearch && !selectedTag && !selectedDay" class="text-caption text-medium-emphasis">点击上方编辑框，写下你的第一段记忆吧 ✨</p>
+          <p v-if="localSearch || selectedTag || selectedDay" class="empty-text-title">没有找到匹配的碎片笔记</p>
+          <p v-else class="empty-text-title">还没有碎片笔记</p>
+          <p v-if="!localSearch && !selectedTag && !selectedDay" class="empty-text-hint">点击上方编辑框，写下你的第一段记忆吧 ✨</p>
         </div>
         <div class="d-flex flex-column ga-4">
-          <div v-for="note in store.notes" :key="note.id" class="note-drag-wrapper">
+          <div v-for="(note, idx) in store.notes" :key="note.id" class="note-drag-wrapper"
+            :style="{ animationDelay: `${idx * 0.05}s` }">
             <NoteCard :memo="note" :search-query="localSearch" :logged-in="auth.isLoggedIn" @edit="handleEdit" @move-pin="movePinnedNote" />
           </div>
         </div>
@@ -560,7 +578,9 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   border-radius: 14px; overflow: clip;
   transition: border-color 0.2s, box-shadow 0.2s;
-  background: rgb(var(--v-theme-surface));
+  background: rgba(var(--v-theme-surface), 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 .editor-box:focus-within {
   border-color: rgba(var(--v-theme-primary), 0.3);
@@ -601,15 +621,26 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
 }
 .empty-state {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 48px 16px; gap: 8px;
+  padding: 56px 16px; gap: 12px;
 }
-.empty-icon-wrap {
-  width: 80px; height: 80px;
+.empty-illust {
+  position: relative; width: 80px; height: 80px;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 50%;
-  background: rgba(var(--v-theme-on-surface), 0.03);
-  margin-bottom: 8px;
 }
+.empty-illust-inner {
+  position: relative; display: flex; align-items: center; justify-content: center;
+}
+.empty-icon-main { opacity: 0.15; }
+.notes-empty .empty-icon-main { opacity: 0.12; }
+.empty-icon-sub {
+  position: absolute; bottom: -4px; right: -12px;
+}
+.empty-icon-sparkle {
+  position: absolute; top: -6px; right: -4px; opacity: 0.4;
+}
+.sparkle-2 { top: -2px; right: -20px; opacity: 0.3; }
+.empty-text-title { font-size: 1rem; font-weight: 600; margin: 0; }
+.empty-text-hint { font-size: 0.82rem; color: rgba(var(--v-theme-on-surface), 0.45); margin: 0; }
 .tool-sep {
   width: 1px; height: 20px;
   background: rgba(var(--v-theme-on-surface), 0.1);
@@ -633,6 +664,12 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
 .note-drag-wrapper {
   transition: opacity 0.15s, box-shadow 0.15s;
   border-radius: 12px;
+  animation: cardFadeIn 0.4s ease both;
+}
+
+@keyframes cardFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .scroll-sentinel {
   min-height: 40px;
