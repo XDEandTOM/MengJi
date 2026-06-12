@@ -1,6 +1,6 @@
 <div align="center">
   <br/>
-  <img src="https://img.shields.io/badge/v1.9.0-1976D2?style=flat-square&label=latest" alt="v1.9.0"/>
+  <img src="https://img.shields.io/badge/v2.1.0-1976D2?style=flat-square&label=latest" alt="v2.1.0"/>
   <img src="https://img.shields.io/github/last-commit/Linraintong/SuiSui?style=flat-square&color=4CAF50" alt="Last Commit"/>
   <img src="https://img.shields.io/github/license/Linraintong/SuiSui?style=flat-square" alt="License"/>
   <img src="https://img.shields.io/github/repo-size/Linraintong/SuiSui?style=flat-square&color=FF9800" alt="Repo Size"/>
@@ -52,36 +52,46 @@
 ### 📝 碎片笔记
 | 功能 | 说明 |
 |------|------|
-| **Markdown 编辑器** | 工具栏快捷插入 · 粗体/斜体/标题/代码/链接/列表/引用/表格 |
-| **多图上传** | 拖拽/粘贴上传 · 自动轮播 · 点击放大预览 |
-| **标签系统** | 内联标签栏 · 标签筛选 · 按频次排序 |
-| **全文搜索** | 实时搜索笔记内容和标签，关键词高亮 |
-| **置顶排序** | ↑↓ 按钮调整置顶顺序 · 拖拽友好 |
+| **Markdown 编辑器** | 工具栏快捷插入 · 实时预览 · 代码高亮 |
+| **多图上传** | 拖拽/粘贴上传 · 横向滑动浏览 · 点击放大 |
+| **标签系统** | 内联标签栏 · 多彩标签 · 标签筛选 |
+| **全文搜索** | 实时搜索 · 关键词高亮 |
+| **置顶排序** | ↑↓ 按钮调整置顶顺序 |
+| **时间线视图** | 列表/时间线双视图切换 · 按日期分组 |
+| **笔记大纲** | 侧边栏自动提取 Markdown 标题 |
+| **GitHub 仓库解析** | 自动识别 GitHub URL，显示仓库信息卡片 |
 
 ### 🎨 用户体验
 | 功能 | 说明 |
 |------|------|
-| **Emoji 反应** | 丰富的 emoji 库分类选择 · 游客也可参与 |
-| **活动热力图** | 月度日历 · 按碎片笔记数量着色 · 点击跳转到当天 |
-| **暗色模式** | 一键切换 · 跟随系统偏好 |
-| **自定义主题色** | 每位用户独立设置主色 |
-| **响应式适配** | 桌面侧边栏 · 移动端底部导航 · W全端适配 |
+| **Emoji 反应** | 丰富的 emoji 库 · 游客也可参与 |
+| **活动热力图** | 月度日历 · 按笔记数量着色 |
+| **暗色模式** | 一键切换 · 主题色预设（9种）|
+| **字体选择** | Maple Mono 默认 · 衬线/圆体/楷体/等宽可选 |
+| **毛玻璃效果** | 侧边栏/卡片/编辑器毛玻璃 · 渐变背景 |
+| **入场动效** | 卡片逐个淡入 · 骨架屏加载 |
+| **代码块美化** | macOS 风格圆点 · 行号 · 语言标签 |
+| **响应式适配** | 桌面侧边栏 · 移动端底部导航 · 全端适配 |
+| **网页剪藏** | 浏览器书签脚本 · 一键保存网页内容 |
 
 ### 🔐 系统管理
 | 功能 | 说明 |
 |------|------|
-| **用户系统** | 注册 / 登录 · 角色权限（普通用户 / 管理员） |
-| **回收站** | 软删除 · 恢复 · 永久清空 · 批量管理 |
-| **后台管理** | 系统设置（标题/备案/注册开关）· 用户分页管理 |
-| **数据导入导出** | JSON 格式批量导入/导出碎片笔记 |
+| **用户系统** | 注册/登录 · 角色权限（用户/管理员） |
+| **回收站** | 软删除 · 恢复 · 永久清空 · 分页 |
+| **后台管理** | 系统设置 · SSL 配置 · 用户管理 · Brotli 开关 |
+| **数据导入导出** | JSON 格式批量导入/导出 |
+| **分享链接** | 一键生成 · 公开查看 · 支持表情反应 |
 
 ### 🚀 部署特色
 | 特性 | 说明 |
 |------|------|
 | **单二进制部署** | Go 编译为**一个可执行文件**，内嵌前端全部静态资源 |
 | **SQLite 存储** | 无需数据库服务器，文件即数据库 |
+| **Brotli 压缩** | 后端直接支持 Brotli/gzip，可后台开关 |
 | **零外部依赖** | 除浏览器外无需安装任何运行时 |
 | **安全响应头** | Content-Security-Policy · X-Frame-Options · HSTS |
+| **一键安装** | `curl -sSL .../install.sh \| bash` |
 
 ---
 
@@ -184,11 +194,11 @@ docker run -d --name suisui \
 |:------|:------|
 | **Vue 3** + **TypeScript** (strict 模式) | **Go** (net/http) |
 | **Vuetify 4** (Material Design 3) | **SQLite** (modernc.org/sqlite) |
-| **Pinia** 状态管理 | RESTful API  |
+| **Pinia** 状态管理 | RESTful API + Brotli 压缩 |
 | **Marked** + **Highlight.js** (代码高亮) | **HMAC-SHA256** × 10000 迭代密码哈希 |
 | **Vite 6** (极速构建) | **Token 鉴权** + IP 限流 |
-| **emojibase-data** (中文 emoji) | 版本化 DB 迁移 |
-| 零 CDN · 全部本地打包 | 单二进制嵌入前端 |
+| **emojibase-data** (中文 emoji) | 版本化 DB 迁移 · GitHub API 反代 |
+| 零 CDN · 全部本地打包 | 单二进制嵌入前端 + 字体 |
 
 </div>
 
