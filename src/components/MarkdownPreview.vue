@@ -68,6 +68,7 @@ marked.setOptions({ breaks: true, gfm: true })
 const emit = defineEmits<{ "todo-toggle": [idx: number] }>()
 const props = defineProps<{ content: string; searchQuery?: string }>()
 const zoomedImage = ref("")
+const expandedGrids = ref<Set<string>>(new Set())
 const loadedRepos = ref<Set<string>>(new Set())
 const githubRepos = ref<Record<string, { name: string; fullName: string; description: string; stars: number; language: string; license: string; url: string }>>({})
 
@@ -126,8 +127,8 @@ function highlightText(text: string, query: string): string {
 
 const rendered = computed(() => {
   todoIndex = 0
-  // Ensure reactivity when repos are loaded
-  void loadedRepos.value.has("");
+  // Ensure reactivity when repos are loaded or grids expanded
+  void loadedRepos.value.has(""); void expandedGrids.value.has("");
   try {
     // Strip loaded GitHub URLs from content
     let content = props.content
@@ -135,18 +136,22 @@ const rendered = computed(() => {
       content = content.replace(new RegExp(`https?://github\\.com/${repo.replace("/", "\\/")}\\b`, "g"), "").trim()
     }
     let html = marked(highlightText(content, props.searchQuery || ""), { renderer }) as string
-    let carouselIdx = 0
+    let idx = 0
     html = html.replace(/((?:<p><img[^>]*><\/p>\s*)+)/g, (match) => {
       const images = match.match(/<img[^>]*>/g)
       if (!images || images.length < 2) return match
-      const id = "c" + carouselIdx++
-      return `<div class="img-scroll" data-id="${id}">
-        <div class="img-scroll-track">
-          ${images.map((img, _i) => `<div class="img-scroll-slide">${img}</div>`).join("")}
-        </div>
-        <button class="img-scroll-btn img-scroll-prev" data-id="${id}">‹</button>
-        <button class="img-scroll-btn img-scroll-next" data-id="${id}">›</button>
-        <div class="img-scroll-dots">${images.map((_, i) => `<span class="img-scroll-dot" data-idx="${i}"></span>`).join("")}</div>
+      const id = "g" + idx++
+      const maxVisible = window.innerWidth <= 640 ? 3 : 4
+      const isExpanded = expandedGrids.value.has(id)
+      const visible = isExpanded ? images : images.slice(0, maxVisible)
+      const remaining = images.length - maxVisible
+      return `<div class="img-grid" data-id="${id}">
+        ${visible.map((img, i) => {
+          const isLast = i === maxVisible - 1 && remaining > 0 && !isExpanded
+          return `<div class="img-grid-cell${isLast ? ' img-grid-overflow' : ''}">
+            ${img}${isLast ? `<div class="img-grid-overlay" data-id="${id}"><span class="img-grid-more">+${remaining}</span></div>` : ''}
+          </div>`
+        }).join("")}
       </div>`
     })
     return html
@@ -164,15 +169,12 @@ function handleClick(e: MouseEvent) {
   }
   const img = target.closest("img") as HTMLImageElement
   if (img) { zoomedImage.value = img.src; return }
-  // Scroll prev/next
-  const btn = target.closest(".img-scroll-btn") as HTMLElement
-  if (btn) {
-    const wrap = btn.closest(".img-scroll") as HTMLElement
-    if (!wrap) return
-    const track = wrap.querySelector(".img-scroll-track") as HTMLElement
-    const isNext = btn.classList.contains("img-scroll-next")
-    const amt = track.clientWidth * (isNext ? 1 : -1)
-    track.scrollBy({ left: amt, behavior: "smooth" })
+  // Expand collapsed image grid
+  const cell = target.closest(".img-grid-overflow") as HTMLElement
+  if (cell) {
+    const grid = cell.closest(".img-grid") as HTMLElement
+    const id = grid?.getAttribute("data-id")
+    if (id) { expandedGrids.value.add(id); expandedGrids.value = new Set(expandedGrids.value) }
     return
   }
   const copyBtn = target.closest(".copy-btn") as HTMLElement
@@ -282,32 +284,19 @@ function handleClick(e: MouseEvent) {
 .markdown-body :deep(.code-block-wrapper:hover .copy-btn) { opacity: 1; }
 .markdown-body :deep(.copy-btn:hover) { background: rgba(var(--v-theme-primary), 0.08); color: rgb(var(--v-theme-primary)); border-color: rgba(var(--v-theme-primary), 0.3); }
 .markdown-body :deep(.carousel-wrap) { position: relative; margin: .5em 0; border-radius: 8px; overflow: hidden; background: rgba(var(--v-theme-on-surface), 0.03); }
-.markdown-body :deep(.img-scroll) { margin: .3em 0; position: relative; }
-.markdown-body :deep(.img-scroll-track) {
-  display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
-  scrollbar-width: none; border-radius: 10px; gap: 0;
+.markdown-body :deep(.img-grid) { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin: .2em 0; }
+.markdown-body :deep(.img-grid-cell) { overflow: hidden; border-radius: 12px; aspect-ratio: 1; }
+.markdown-body :deep(.img-grid-cell img) { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; transition: transform 0.2s; border-radius: 12px; }
+.markdown-body :deep(.img-grid-cell img:hover) { transform: scale(1.03); }
+.markdown-body :deep(.img-grid-overflow) { position: relative; cursor: pointer; }
+.markdown-body :deep(.img-grid-overlay) {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.12);
+  border-radius: 12px; transition: background 0.2s; cursor: pointer;
 }
-.markdown-body :deep(.img-scroll-track::-webkit-scrollbar) { display: none; }
-.markdown-body :deep(.img-scroll-slide) { flex: 0 0 100%; scroll-snap-align: start; display: flex; align-items: center; justify-content: center; background: rgba(var(--v-theme-on-surface), 0.02); min-height: 160px; }
-.markdown-body :deep(.img-scroll-slide img) { width: 100%; max-height: 320px; object-fit: contain; cursor: zoom-in; }
-.markdown-body :deep(.img-scroll-btn) {
-  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
-  width: 32px; height: 32px; border-radius: 50%; border: none;
-  background: rgba(0,0,0,0.4); color: #fff; font-size: 1.3rem;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; opacity: 0; transition: opacity 0.2s; line-height: 1;
-}
-.markdown-body :deep(.img-scroll:hover .img-scroll-btn) { opacity: 1; }
-.markdown-body :deep(.img-scroll-btn:hover) { background: rgba(0,0,0,0.6); }
-.markdown-body :deep(.img-scroll-prev) { left: 8px; }
-.markdown-body :deep(.img-scroll-next) { right: 8px; }
-.markdown-body :deep(.img-scroll-dots) {
-  display: flex; gap: 5px; justify-content: center; padding: 6px 0 2px;
-}
-.markdown-body :deep(.img-scroll-dot) {
-  width: 6px; height: 6px; border-radius: 50%; background: rgba(var(--v-theme-primary), 0.25);
-  transition: all 0.2s;
-}
+.markdown-body :deep(.img-grid-overlay:hover) { background: rgba(0,0,0,0.45); }
+.markdown-body :deep(.img-grid-more) { color: #fff; font-size: 1.5rem; font-weight: 700; }
+@media (max-width: 640px) { .markdown-body :deep(.img-grid) { grid-template-columns: repeat(3, 1fr); } }
 
 .markdown-body :deep(mark) {
   background: rgba(var(--v-theme-warning), 0.35);

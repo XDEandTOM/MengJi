@@ -63,9 +63,6 @@ export const useNotesStore = defineStore("notes", () => {
       if (selectedTag.value) params.set("tag", selectedTag.value)
       if (selectedDay.value) params.set("date", selectedDay.value)
 
-      const auth = useAuthStore()
-      if (auth.isLoggedIn && auth.userName) params.set("username", auth.userName)
-
       const url = `${API}/notes?${params.toString()}`
       loadingMore.value = !reset
 

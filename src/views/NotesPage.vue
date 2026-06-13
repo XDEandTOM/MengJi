@@ -136,7 +136,7 @@ function setupInfiniteScroll() {
     if (entries[0].isIntersecting && store.hasMore && !store.loadingMore) {
       store.fetchNotes(false)
     }
-  }, { rootMargin: "400px" })
+  }, { rootMargin: "600px" })
   nextTick(() => {
     if (scrollSentinel.value) scrollObserver?.observe(scrollSentinel.value)
   })
@@ -399,8 +399,9 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
         </Transition>
         <!-- Infinite scroll sentinel -->
         <div ref="scrollSentinel" class="scroll-sentinel">
-          <div v-if="store.loadingMore" class="d-flex justify-center py-4">
-            <v-progress-circular indeterminate size="24" color="primary" />
+          <div v-if="store.loadingMore" class="d-flex flex-column align-center py-4 ga-2">
+            <v-progress-circular indeterminate size="32" color="primary" />
+            <span class="text-caption text-medium-emphasis">加载中…</span>
           </div>
           <div v-else-if="!store.hasMore && store.notes.length > 0" class="scroll-end">
             <div class="scroll-end-line" />
@@ -560,7 +561,7 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
   to   { opacity: 1; transform: translateY(0); }
 }
 .scroll-sentinel {
-  min-height: 40px;
+  min-height: 80px;
 }
 .scroll-end {
   display: flex; align-items: center; gap: 12px; justify-content: center;
