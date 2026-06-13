@@ -247,7 +247,7 @@ function handleClick(e: MouseEvent) {
 .markdown-body :deep(pre code) { background: none; padding: 0; font-size: .85em; font-family: var(--code-font); }
 .markdown-body :deep(table) { border-collapse: collapse; width: 100%; margin: .5em 0; }
 .markdown-body :deep(th),.markdown-body :deep(td) { border: 1px solid rgba(var(--v-theme-on-surface),.15); padding: .4em .6em; text-align: left; }
-.markdown-body :deep(img) { max-width: 100%; max-height: 280px; border-radius: 12px; cursor: zoom-in; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: transform 0.2s, box-shadow 0.2s; border: 1px solid rgba(var(--v-theme-on-surface), 0.04); object-fit: contain; background: rgba(var(--v-theme-on-surface), 0.02); }
+.markdown-body :deep(img) { max-width: 100%; max-height: 200px; border-radius: 12px; cursor: zoom-in; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: transform 0.2s, box-shadow 0.2s; border: 1px solid rgba(var(--v-theme-on-surface), 0.04); object-fit: contain; background: rgba(var(--v-theme-on-surface), 0.02); }
 .markdown-body :deep(img:hover) { transform: scale(1.02); box-shadow: 0 6px 24px rgba(0,0,0,0.1); }
 .markdown-body :deep(a) { color: rgb(var(--v-theme-primary)); text-decoration: none; transition: text-decoration 0.15s, opacity 0.15s; }
 .markdown-body :deep(a:hover) { text-decoration: underline; opacity: 0.85; }

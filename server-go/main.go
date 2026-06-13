@@ -58,6 +58,9 @@ func sseHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	// Send initial keepalive to confirm connection
+	fmt.Fprintf(w, ":ok\n\n")
+	flusher.Flush()
 
 	ch := make(chan string, 3)
 	sseMu.Lock()
@@ -133,7 +136,6 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/", handleAPI)
-	mux.HandleFunc("/api/events", sseHandler)
 	mux.HandleFunc("/uploads/", handleUploads)
 	mux.HandleFunc("/health", handleHealth)
 	mux.HandleFunc("/", handleStatic)
@@ -230,11 +232,24 @@ func compressMiddleware(next http.Handler) http.Handler {
 
 type compressWriter struct {
 	http.ResponseWriter
-	writer io.Writer
+	writer   io.Writer
+	status   int
+	headerWritten bool
 }
 
 func (c *compressWriter) Write(b []byte) (int, error) {
+	if !c.headerWritten {
+		if c.status != 0 {
+			c.ResponseWriter.WriteHeader(c.status)
+		}
+		c.headerWritten = true
+	}
 	return c.writer.Write(b)
+}
+
+func (c *compressWriter) WriteHeader(status int) {
+	if c.headerWritten { return }
+	c.status = status
 }
 
 func (c *compressWriter) Flush() {
@@ -301,6 +316,7 @@ func handleAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	path := strings.TrimPrefix(r.URL.Path, "/api")
+	log.Printf("handleAPI path: %s", path)
 	switch {
 	case strings.HasPrefix(path, "/gh/"):
 		handleGitHubProxy(w, r)
@@ -317,6 +333,8 @@ func handleAPI(w http.ResponseWriter, r *http.Request) {
 		handleShareView(w, r)
 	case strings.HasPrefix(path, "/settings"):
 		handleSettings(w, r)
+	case strings.HasPrefix(path, "/events"):
+		sseHandler(w, r)
 	case path == "/admin/config":
 		jsonResp(w, map[string]interface{}{
 			"version": Version,

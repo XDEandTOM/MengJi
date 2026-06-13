@@ -49,7 +49,16 @@ const showTrash = ref(false)
 const deletedNotes = ref<Note[]>([])
 const editorRef = ref<InstanceType<typeof InlineEditor> | null>(null)
 const newNotesCount = ref(0)
+let suppressNewNotesTimer: ReturnType<typeof setTimeout> | null = null
 let pollingTimer: ReturnType<typeof setInterval> | null = null
+
+function suppressNewNotes() {
+  if (suppressNewNotesTimer) clearTimeout(suppressNewNotesTimer)
+  suppressNewNotesTimer = setTimeout(() => { suppressNewNotesTimer = null }, 3000)
+}
+
+// Expose globally so InlineEditor can call it after submit
+;(window as any).__suppressNewNotes = suppressNewNotes
 
 
 const timelineGroups = computed(() => {
@@ -107,7 +116,7 @@ function restoreDraft() { // eslint-disable-line @typescript-eslint/no-unused-va
   } catch { console.warn("restoreDraft failed") }
 }
 
-function clearDraft() {
+function clearDraft() { // eslint-disable-line @typescript-eslint/no-unused-vars
   localStorage.removeItem(DRAFT_KEY)
 }
 
@@ -213,19 +222,7 @@ async function deleteForever(id: string) {
 }
 
 function handleEdit(memo: Note) {
-  clearDraft()
-  const imgRegex = /!\[.*?\]\((.+?)\)/g
-  const urls: string[] = []
-  const text = memo.content.replace(imgRegex, (_m: string, url: string) => { urls.push(url); return "" })
-  inlineContent.value = text.trim()
-  uploadedImages.value = urls
-  inlineTagsInput.value = memo.tags || []
-  editingNoteId.value = memo.id
-  nextTick(() => {
-    if (inlineTextarea.value) { inlineTextarea.value.style.height = "auto"; inlineTextarea.value.style.height = inlineTextarea.value.scrollHeight + "px" }
-  })
-  inlineTextarea.value?.scrollIntoView({ behavior: "smooth" })
-  inlineTextarea.value?.focus()
+  editorRef.value?.handleEdit(memo)
 }
 
 function handleGlobalKeydown(e: KeyboardEvent) {
@@ -247,18 +244,17 @@ function handleGlobalKeydown(e: KeyboardEvent) {
 }
 
 function startPolling() {
-  // Use SSE for real-time updates
   const evtSource = new EventSource('/api/events')
   evtSource.addEventListener('note', () => {
-    // Check for new notes
+    if (suppressNewNotesTimer) return
     fetch('/api/notes?limit=1&offset=0').then(r => r.json()).then(data => {
       if (data.total > store.total && store.total > 0) {
         newNotesCount.value = data.total - store.total
       }
     }).catch(() => {})
   })
-  // Fallback polling if SSE fails
   pollingTimer = setInterval(async () => {
+    if (suppressNewNotesTimer) return
     try {
       const res = await fetch(`/api/notes?limit=1&offset=0`)
       if (res.ok) {
