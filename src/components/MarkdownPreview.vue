@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue"
+import { ref, computed, watch, onMounted } from "vue"
 import { marked } from "marked"
 import hljs from "highlight.js/lib/core"
 import "highlight.js/lib/languages/javascript"
@@ -14,40 +14,30 @@ import "highlight.js/lib/languages/sql"
 import "highlight.js/lib/languages/yaml"
 import "highlight.js/lib/languages/dockerfile"
 import "highlight.js/lib/languages/markdown"
-import { useTheme } from "vuetify"
-import hljsDark from "highlight.js/styles/github-dark.min.css?url"
-import hljsLight from "highlight.js/styles/github.min.css?url"
 
-const theme = useTheme()
-const isDark = computed(() => theme.global.name.value === "dark")
-
-function loadHighlightTheme(dark: boolean) {
-  const id = "hljs-theme"
-  let link = document.getElementById(id) as HTMLLinkElement | null
-  if (!link) {
-    link = document.createElement("link")
-    link.id = id
-    link.rel = "stylesheet"
-    document.head.appendChild(link)
-  }
-  link.href = dark ? hljsDark : hljsLight
-}
-
-onMounted(() => loadHighlightTheme(theme.global.name.value === "dark"))
-watch(isDark, (v) => loadHighlightTheme(v))
 
 const renderer = new marked.Renderer()
 let todoIndex = 0
 renderer.code = ({ text, lang }) => {
-  let highlighted: string
+  let code: string
   try {
-    if (lang && hljs.getLanguage(lang)) highlighted = hljs.highlight(text, { language: lang }).value
-    else highlighted = hljs.highlightAuto(text).value
-  } catch { highlighted = text }
+    if (lang && hljs.getLanguage(lang)) code = hljs.highlight(text, { language: lang }).value
+    else code = hljs.highlightAuto(text).value
+  } catch { code = text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") }
+  if (!code) code = text;                                               // apply inline styles
+    code = code.replace(/hljs-keyword/g,'hljs-keyword" style="color:#ff7b72;font-weight:600')
+      .replace(/hljs-string"/g,'hljs-string" style="color:#a5d6ff')
+      .replace(/hljs-number"/g,'hljs-number" style="color:#79c0ff')
+      .replace(/hljs-built_in"/g,'hljs-built_in" style="color:#ffa657')
+      .replace(/hljs-title"/g,'hljs-title" style="color:#d2a8ff')
+      .replace(/hljs-comment"/g,'hljs-comment" style="color:#8b949e;font-style:italic')
+      .replace(/hljs-literal"/g,'hljs-literal" style="color:#79c0ff')
+      .replace(/hljs-attr"/g,'hljs-attr" style="color:#79c0ff')
   const encoded = encodeURIComponent(text)
-  return `<div class="code-block-wrapper">
-    <div class="code-header"><span class="code-dot red"></span><span class="code-dot yellow"></span><span class="code-dot green"></span><span class="code-lang">${lang || ""}</span><button class="copy-btn" data-code="${encoded}" title="复制代码"><svg style="pointer-events:none" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>
-    <div class="code-body"><pre><code class="language-${lang || ""}">${highlighted}</code></pre></div>
+  const lines = text.split("\n").length
+  return `<div class="code-block">
+    <div class="code-block-header"><span class="code-block-lang">${lang || "code"}</span><button class="code-copy-btn" data-code="${encoded}" title="复制代码"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>
+    <div class="code-block-body"><div class="code-block-lines">${Array.from({length: lines}, (_, i) => `<span>${i + 1}</span>`).join("")}</div><pre><code>${code}</code></pre></div>
   </div>`
 }
 renderer.listitem = ({ text, task, checked }) => {
@@ -173,7 +163,7 @@ function handleClick(e: MouseEvent) {
     if (id) { expandedGrids.value.add(id); expandedGrids.value = new Set(expandedGrids.value) }
     return
   }
-  const copyBtn = target.closest(".copy-btn") as HTMLElement
+  const copyBtn = target.closest(".code-copy-btn") as HTMLElement
   if (!copyBtn) return
   const raw = copyBtn.getAttribute("data-code")
   if (!raw) return
@@ -247,38 +237,31 @@ function handleClick(e: MouseEvent) {
 .markdown-body :deep(img:hover) { transform: scale(1.02); box-shadow: 0 6px 24px rgba(0,0,0,0.1); }
 .markdown-body :deep(a) { color: rgb(var(--v-theme-primary)); text-decoration: none; transition: text-decoration 0.15s, opacity 0.15s; }
 .markdown-body :deep(a:hover) { text-decoration: underline; opacity: 0.85; }
-.markdown-body :deep(.code-block-wrapper) { position: relative; margin: .5em 0; border-radius: 10px; overflow: hidden; border: 1px solid rgba(var(--v-theme-on-surface), 0.06); }
-.markdown-body :deep(.code-header) {
-  display: flex; align-items: center; gap: 6px; padding: 8px 12px;
-  background: rgba(var(--v-theme-on-surface), 0.03);
+.markdown-body :deep(.code-block) { margin: .5em 0; border-radius: 10px; overflow: hidden; border: 1px solid rgba(var(--v-theme-on-surface), 0.08); }
+.markdown-body :deep(.code-block-header) {
+  display: flex; align-items: center; padding: 6px 12px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.04);
 }
-.markdown-body :deep(.code-dot) { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.markdown-body :deep(.code-dot.red) { background: #ff5f57; }
-.markdown-body :deep(.code-dot.yellow) { background: #febc2e; }
-.markdown-body :deep(.code-dot.green) { background: #28c840; }
-.markdown-body :deep(.code-lang) { font-size: 0.7rem; opacity: 0.3; text-transform: uppercase; letter-spacing: 0.5px; flex: 1; }
-.markdown-body :deep(.copy-btn) {
-  width: 24px; height: 24px; border-radius: 5px; border: none;
-  background: transparent; color: rgba(var(--v-theme-on-surface), 0.3);
-  cursor: pointer; transition: all 0.15s; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
+.markdown-body :deep(.code-block-lang) { font-size: 0.7rem; opacity: 0.45; text-transform: uppercase; letter-spacing: 0.5px; flex: 1; font-weight: 600; }
+.markdown-body :deep(.code-copy-btn) {
+  width: 24px; height: 24px; border-radius: 4px; border: none; background: transparent;
+  color: rgba(var(--v-theme-on-surface), 0.25); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s;
 }
-.markdown-body :deep(.copy-btn:hover) { background: rgba(var(--v-theme-on-surface), 0.06); color: rgba(var(--v-theme-on-surface), 0.7); }
-.markdown-body :deep(.copy-btn svg) { pointer-events: none; }
-.markdown-body :deep(.code-body) { display: flex; }
-.markdown-body :deep(.code-gutter) {
-  display: flex; flex-direction: column; align-items: flex-end; padding: 12px 8px;
-  background: rgba(var(--v-theme-on-surface), 0.02); user-select: none;
-  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.04);
+.markdown-body :deep(.code-copy-btn:hover) { background: rgba(var(--v-theme-on-surface), 0.06); color: rgba(var(--v-theme-on-surface), 0.6); }
+.markdown-body :deep(.code-block-body) { display: flex; background: rgba(var(--v-theme-on-surface), 0.02); }
+.markdown-body :deep(.code-block-lines) {
+  display: flex; flex-direction: column; align-items: flex-end;
+  padding: 10px 8px; user-select: none; border-right: 1px solid rgba(var(--v-theme-on-surface), 0.04);
+  font-size: 0.82em; line-height: 1.55; color: rgba(var(--v-theme-on-surface), 0.15);
+  font-family: var(--code-font); min-width: 28px;
 }
-.markdown-body :deep(.code-line-num) {
-  font-size: 0.72em; line-height: 1.6; color: rgba(var(--v-theme-on-surface), 0.2);
-  font-family: var(--code-font);
+.markdown-body :deep(.code-block-body pre) {
+  margin: 0; padding: 10px 14px; background: none; border-radius: 0;
+  font-size: 0.82em; line-height: 1.55; font-family: var(--code-font);
 }
-.markdown-body :deep(.code-body pre) { background: none; border-radius: 0; margin: 0; padding: 12px 0; }
-.markdown-body :deep(pre) { margin: 0; }
-.markdown-body :deep(.copy-btn:hover) { background: rgba(var(--v-theme-primary), 0.08); color: rgb(var(--v-theme-primary)); border-color: rgba(var(--v-theme-primary), 0.3); }
+.markdown-body :deep(.code-block-body pre code) { padding: 0; background: none; font-size: inherit; font-family: inherit; }
 .markdown-body :deep(.carousel-wrap) { position: relative; margin: .5em 0; border-radius: 8px; overflow: hidden; background: rgba(var(--v-theme-on-surface), 0.03); }
 .markdown-body :deep(.img-grid) { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin: .2em 0; }
 .markdown-body :deep(.img-grid-cell) { overflow: hidden; border-radius: 12px; aspect-ratio: 1; }
@@ -366,7 +349,6 @@ function handleClick(e: MouseEvent) {
   opacity: 0.55;
 }
 </style>
-
 <style>
 /* GitHub repo card */
 .gh-card { margin: .5em 0; }
