@@ -133,6 +133,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/", handleAPI)
+	mux.HandleFunc("/api/events", sseHandler)
 	mux.HandleFunc("/uploads/", handleUploads)
 	mux.HandleFunc("/health", handleHealth)
 	mux.HandleFunc("/", handleStatic)
@@ -310,8 +311,6 @@ func handleAPI(w http.ResponseWriter, r *http.Request) {
 		handleShareView(w, r)
 	case strings.HasPrefix(path, "/settings"):
 		handleSettings(w, r)
-	case path == "/events":
-		sseHandler(w, r)
 	case path == "/admin/config":
 		jsonResp(w, map[string]interface{}{
 			"version": Version,
