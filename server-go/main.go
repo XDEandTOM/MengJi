@@ -53,7 +53,7 @@ func sseBroadcast(event string, data string) {
 
 func sseHandler(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
-	if !ok { http.NotFound(w, r); return }
+	if !ok { errResp(w, "streaming not supported", 500); return }
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
@@ -275,6 +275,12 @@ func (w *statusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 		return h.Hijack()
 	}
 	return nil, nil, http.ErrNotSupported
+}
+
+func (w *statusWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
