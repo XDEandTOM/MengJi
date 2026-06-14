@@ -7,7 +7,7 @@ on:
     branches: ["main"]
 
 jobs:
-  frontend:
+  lint-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,8 +16,15 @@ jobs:
         with:
           node-version: 20
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Go vet
+        run: cd server-go && go vet ./...
 
       - name: Lint
         run: npm run lint
@@ -25,24 +32,11 @@ jobs:
       - name: Type check
         run: npx vue-tsc --noEmit
 
-      - name: Test
+      - name: Frontend test
         run: npm run test:run
+
+      - name: Go test
+        run: cd server-go && go test ./... -count=1 -timeout 30s
 
       - name: Build
         run: npm run build
-
-  backend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.23"
-          cache: false
-
-      - name: Vet
-        run: cd server-go && GOTOOLCHAIN=local go vet ./...
-
-      - name: Test
-        run: cd server-go && go test ./... -count=1 -timeout 30s
