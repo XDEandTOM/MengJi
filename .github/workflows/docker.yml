@@ -48,5 +48,3 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/suisui:latest
             ${{ secrets.DOCKER_USERNAME }}/suisui:${{ steps.meta.outputs.tag }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
