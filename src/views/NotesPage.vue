@@ -46,6 +46,8 @@ const newNotesCount = ref(0)
 let lastActionAt = 0
 let pollingTimer: ReturnType<typeof setInterval> | null = null
 
+watch(showTrash, v => { if (v) fetchDeletedNotes() })
+
 function onNoteSubmitted() {
   lastActionAt = Date.now()
 }
@@ -157,7 +159,7 @@ async function fetchVersion() {
 }
 
 
-async function fetchDeletedNotes() { // eslint-disable-line @typescript-eslint/no-unused-vars
+async function fetchDeletedNotes() {
   try {
     const res = await authFetch(`/api/notes/trash?username=${auth.userName}`)
     if (res.ok) { deletedNotes.value = await res.json() }
@@ -321,7 +323,7 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
         </v-card>
       </v-dialog>
 
-      <InlineEditor ref="editorRef" @submitted="onNoteSubmitted" />
+      <InlineEditor ref="editorRef" @submitted="onNoteSubmitted" @open-trash="showTrash = true" />
       <div v-if="!store.loaded" class="d-flex flex-column ga-3 px-1">
         <div v-for="i in 3" :key="i" class="skeleton-card">
           <div class="skeleton-row" style="width:65%" />

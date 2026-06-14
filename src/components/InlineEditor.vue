@@ -7,12 +7,12 @@ import { authFetch } from "@/utils/api"
 const store = useNotesStore()
 const auth = useAuthStore()
 
-const emit = defineEmits<{ submitted: [] }>()
+const emit = defineEmits<{ submitted: []; "open-trash": [] }>()
 
 const inlineContent = ref("")
 const inlineTagsInput = ref<string[]>([])
-const showInlineTags = ref(false)
 const tagInput = ref("")
+const showInlineTags = ref(false)
 const inlineUploading = ref(false)
 const inlineTextarea = ref<HTMLTextAreaElement | null>(null)
 const inlineFileInput = ref<HTMLInputElement | null>(null)
@@ -23,7 +23,7 @@ const DRAFT_KEY = "suisui-draft"
 
 function addTag() {
   const t = tagInput.value.trim()
-  if (t && !inlineTagsInput.value.includes(t)) { inlineTagsInput.value.push(t) }
+  if (t && !inlineTagsInput.value.includes(t)) inlineTagsInput.value.push(t)
   tagInput.value = ""
 }
 
@@ -188,20 +188,24 @@ defineExpose({ handleEdit })
         </div>
       </div>
       <div class="editor-toolbar">
-        <div class="d-flex align-center ga-2">
+        <div class="d-flex align-center ga-1">
           <v-btn icon="mdi-image-plus" size="small" variant="text" class="tool-btn" :loading="inlineUploading" @click="triggerInlineUpload" />
           <input ref="inlineFileInput" type="file" accept="image/*" multiple hidden @change="onInlineUpload" />
-          <span class="tool-sep-sm" />
+          <v-btn icon="mdi-delete-outline" size="small" variant="text" class="tool-btn" @click="$emit('open-trash')" />
         </div>
         <v-btn color="primary" size="small" variant="flat" class="rounded-pill submit-btn" @click="submitInline">
           <v-icon start>mdi-send</v-icon>{{ editingNoteId ? "更新" : "发布" }}
         </v-btn>
       </div>
       <div class="inline-tag-bar">
-        <template v-for="(tag, i) in inlineTagsInput" :key="i">
-          <v-chip size="x-small" closable @click:close="inlineTagsInput.splice(i, 1)">{{ tag }}</v-chip>
-        </template>
-        <v-text-field v-model="tagInput" variant="plain" hide-details density="compact" placeholder="+ 添加标签" single-line class="tag-input" @keydown.enter.prevent="addTag" />
+        <div class="tag-chips">
+          <v-chip v-for="(tag, i) in inlineTagsInput" :key="i" size="x-small" closable class="tag-chip"
+            @click:close="inlineTagsInput.splice(i, 1)">
+{{ tag }}
+</v-chip>
+        </div>
+        <v-text-field v-model="tagInput" hide-details density="compact" placeholder="# 标签" single-line
+          variant="plain" class="tag-input-mini" @keydown.enter.prevent="addTag" />
       </div>
     </div>
     <div v-if="hasDraft && !editingNoteId" class="draft-indicator">
@@ -240,8 +244,13 @@ defineExpose({ handleEdit })
 .editor-toolbar .tool-btn { opacity: 0.5; border-radius: 6px; }
 .editor-toolbar .tool-btn:hover { opacity: 1; background: rgba(var(--v-theme-on-surface), 0.05); }
 .submit-btn { height: 30px; }
-.inline-tag-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 0 12px 8px; }
-.inline-tag-bar .tag-input { min-width: 100px; max-width: 160px; }
+.inline-tag-bar { display: flex; align-items: center; gap: 6px; padding: 0 12px 8px; flex-wrap: wrap; }
+.tag-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+.tag-chip { font-size: 0.75rem; }
+.tag-input-mini { min-width: 72px; max-width: 100px; flex-shrink: 0; }
+.tag-input-mini :deep(.v-field) { background: transparent !important; box-shadow: none !important; min-height: 24px !important; }
+.tag-input-mini :deep(.v-field__input) { padding: 0 4px !important; font-size: 0.78rem; min-height: 24px !important; }
+.tag-input-mini :deep(.v-field__input::placeholder) { color: rgba(var(--v-theme-on-surface), 0.3); }
 .draft-indicator { display: flex; align-items: center; gap: 4px; padding: 2px 12px 8px; font-size: 0.7rem; color: rgba(var(--v-theme-warning), 0.7); }
 .uploaded-img-wrap { position: relative; display: inline-block; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(var(--v-theme-on-surface), 0.08); flex-shrink: 0; }
 .img-close-btn { position: absolute; top: -4px; right: -4px; background: rgb(var(--v-theme-surface)); border-radius: 50%; }
