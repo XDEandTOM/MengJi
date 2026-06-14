@@ -35,6 +35,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Copy frontend for Go embed
+        run: cp -r dist server-go/
+
       - name: Go vet
         run: cd server-go && go vet ./... 2>&1
 
