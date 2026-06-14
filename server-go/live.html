@@ -2,49 +2,98 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>直播 - 碎碎</title>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <style>
+:root { --bg: #0a0a0f; --surface: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.06); --text: #e8e8ee; --text2: rgba(255,255,255,0.45); --accent: #6366f1; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #000; color: #eee; font-family: -apple-system, 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-.live-container { display: flex; flex: 1; overflow: hidden; }
-.video-section { flex: 1; position: relative; background: #000; display: flex; align-items: center; justify-content: center; }
-.video-section video { width: 100%; height: 100%; object-fit: contain; }
-.status-badge { position: absolute; top: 16px; left: 16px; display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.5); padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; backdrop-filter: blur(4px); }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; }
-.status-dot.online { background: #4caf50; box-shadow: 0 0 8px #4caf50; animation: pulse 2s infinite; }
-.status-dot.offline { background: #f44336; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-.danmaku-overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-.danmaku-item { position: absolute; white-space: nowrap; color: #fff; font-size: 1rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); animation: danmakuScroll 8s linear forwards; }
-@keyframes danmakuScroll { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
-.chat-section { width: 320px; display: flex; flex-direction: column; background: rgba(20,20,20,0.95); border-left: 1px solid rgba(255,255,255,0.06); }
-.chat-header { padding: 12px 16px; font-size: 0.85rem; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.06); }
-.chat-messages { flex: 1; overflow-y: auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; }
-.chat-msg { font-size: 0.82rem; line-height: 1.4; word-break: break-word; }
-.chat-author { color: #64b5f6; font-weight: 500; margin-right: 6px; }
-.chat-input-row { display: flex; gap: 8px; padding: 8px 12px; border-top: 1px solid rgba(255,255,255,0.06); }
-.chat-input-row input { flex: 1; background: rgba(255,255,255,0.06); border: none; border-radius: 8px; padding: 8px 12px; color: #fff; font-size: 0.82rem; outline: none; }
-.chat-input-row input::placeholder { color: rgba(255,255,255,0.3); }
-.chat-input-row button { background: #1976d2; color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 0.82rem; cursor: pointer; transition: background 0.2s; }
-.chat-input-row button:hover { background: #1565c0; }
-@media (max-width: 768px) { .chat-section { width: 100%; height: 40vh; } .live-container { flex-direction: column; } }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, 'SF Pro Display', 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+
+/* Main layout */
+.live-wrap { width: 100%; height: 100%; display: flex; flex-direction: column; max-width: 1600px; margin: 0 auto; }
+.live-main { flex: 1; display: flex; gap: 0; overflow: hidden; min-height: 0; }
+
+/* Video side */
+.video-side { flex: 1; display: flex; flex-direction: column; background: #000; position: relative; min-width: 0; }
+.video-wrap { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; background: #000; }
+.video-wrap video { width: 100%; height: 100%; object-fit: contain; }
+.video-controls { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: rgba(0,0,0,0.6); backdrop-filter: blur(12px); border-top: 1px solid var(--border); }
+.video-controls .vbtn { width: 32px; height: 32px; border-radius: 8px; border: none; background: var(--surface); color: var(--text); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; font-size: 1.1rem; flex-shrink: 0; }
+.video-controls .vbtn:hover { background: rgba(255,255,255,0.1); }
+.video-controls .vbtn.muted { color: #ef4444; }
+.volume-slider { width: 80px; accent-color: var(--accent); }
+
+/* Stream info overlay on video */
+.stream-info { position: absolute; top: 16px; left: 16px; display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.55); backdrop-filter: blur(8px); padding: 6px 14px 6px 10px; border-radius: 10px; font-size: 0.78rem; border: 1px solid rgba(255,255,255,0.04); }
+.stream-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.stream-dot.on { background: #22c55e; box-shadow: 0 0 10px rgba(34,197,94,0.5); }
+.stream-dot.off { background: #6b7280; }
+.stream-label { color: var(--text2); }
+.stream-name { color: var(--text); font-weight: 500; }
+
+/* Chat side */
+.chat-side { width: 340px; display: flex; flex-direction: column; background: var(--bg); border-left: 1px solid var(--border); flex-shrink: 0; }
+.chat-head { padding: 14px 16px; font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); color: var(--text2); }
+.chat-head span { color: var(--text); }
+.chat-body { flex: 1; overflow-y: auto; padding: 8px 0; display: flex; flex-direction: column; gap: 2px; }
+.chat-body::-webkit-scrollbar { width: 4px; }
+.chat-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+.chat-msg { padding: 4px 16px; font-size: 0.82rem; line-height: 1.5; word-break: break-word; transition: background 0.1s; }
+.chat-msg:hover { background: var(--surface); }
+.chat-msg .author { color: var(--accent); font-weight: 500; margin-right: 6px; }
+.chat-msg .author.me { color: #f59e0b; }
+.chat-msg .time { font-size: 0.65rem; color: var(--text2); margin-left: 4px; }
+.chat-foot { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border); }
+.chat-foot input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: var(--text); font-size: 0.82rem; outline: none; transition: border-color 0.15s; }
+.chat-foot input:focus { border-color: var(--accent); }
+.chat-foot input::placeholder { color: var(--text2); }
+.chat-foot button { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 0.82rem; cursor: pointer; transition: opacity 0.15s; font-weight: 500; }
+.chat-foot button:hover { opacity: 0.85; }
+
+/* Danmaku */
+.danmaku-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.danmaku-item { position: absolute; white-space: nowrap; color: #fff; font-size: 1rem; font-weight: 500; text-shadow: 0 0 6px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.6); animation: danmakuScroll 9s linear forwards; pointer-events: none; opacity: 0.92; }
+@keyframes danmakuScroll { from { transform: translateX(calc(100vw - 340px)); } to { transform: translateX(-120%); } }
+
+/* Mobile */
+@media (max-width: 768px) {
+  .live-main { flex-direction: column; }
+  .video-side { flex: none; height: 45vh; }
+  .chat-side { width: 100%; flex: 1; border-left: none; border-top: 1px solid var(--border); }
+  .danmaku-item { animation-duration: 6s; }
+  @keyframes danmakuScroll { from { transform: translateX(100vw); } to { transform: translateX(-120%); } }
+}
 </style>
 </head>
 <body>
-<div class="live-container">
-  <div class="video-section">
-    <video id="video" autoplay muted playsinline></video>
-    <div class="status-badge"><span class="status-dot offline" id="statusDot"></span><span id="statusText">加载中...</span></div>
-    <div class="danmaku-overlay" id="danmakuOverlay"></div>
-  </div>
-  <div class="chat-section">
-    <div class="chat-header">💬 聊天</div>
-    <div class="chat-messages" id="chatMessages"></div>
-    <div class="chat-input-row">
-      <input id="chatInput" placeholder="发送消息..." maxlength="200" />
-      <button id="chatSend">发送</button>
+<div class="live-wrap">
+  <div class="live-main">
+    <div class="video-side">
+      <div class="video-wrap">
+        <video id="video" autoplay playsinline></video>
+        <div class="stream-info">
+          <span class="stream-dot off" id="statusDot"></span>
+          <span class="stream-label">直播</span>
+          <span class="stream-name" id="statusText">加载中</span>
+        </div>
+        <div class="danmaku-layer" id="danmakuLayer"></div>
+      </div>
+      <div class="video-controls">
+        <button class="vbtn" id="playBtn" title="播放/暂停">⏸</button>
+        <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.05" value="0.5" />
+        <button class="vbtn" id="muteBtn" title="静音">🔊</button>
+        <div style="flex:1"></div>
+        <span style="font-size:0.75rem;color:var(--text2)" id="timeDisplay">00:00 / 00:00</span>
+      </div>
+    </div>
+    <div class="chat-side">
+      <div class="chat-head">💬 <span id="chatCount">聊天</span></div>
+      <div class="chat-body" id="chatBody"></div>
+      <div class="chat-foot">
+        <input id="chatInput" placeholder="发个弹幕..." maxlength="100" />
+        <button id="chatSend">发送</button>
+      </div>
     </div>
   </div>
 </div>
@@ -52,69 +101,103 @@ body { background: #000; color: #eee; font-family: -apple-system, 'Segoe UI', sa
 const video = document.getElementById('video');
 const statusDot = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
-const danmakuOverlay = document.getElementById('danmakuOverlay');
-const chatMessages = document.getElementById('chatMessages');
+const danmakuLayer = document.getElementById('danmakuLayer');
+const chatBody = document.getElementById('chatBody');
 const chatInput = document.getElementById('chatInput');
 const chatSend = document.getElementById('chatSend');
+const chatCount = document.getElementById('chatCount');
+const playBtn = document.getElementById('playBtn');
+const muteBtn = document.getElementById('muteBtn');
+const volumeSlider = document.getElementById('volumeSlider');
+const timeDisplay = document.getElementById('timeDisplay');
 
-// Load stream URL from config, then init player
+let hls = null;
+let msgCount = 0;
+let chatHistory = [];
+
+// Init
 fetch('/api/live/config').then(r=>r.json()).then(cfg => {
   const url = cfg.streamUrl;
-  if (!url) { statusText.textContent = '未配置'; return; }
+  if (!url) { statusText.textContent = '未配置'; statusDot.className = 'stream-dot off'; return; }
   if (Hls.isSupported()) {
-    const hls = new Hls();
+    hls = new Hls();
     hls.loadSource(url);
     hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+    hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play(); statusText.textContent = '直播中'; statusDot.className = 'stream-dot on'; });
+    hls.on(Hls.Events.ERROR, () => { statusText.textContent = '信号中断'; statusDot.className = 'stream-dot off'; });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = url;
+    video.addEventListener('loadedmetadata', () => { statusText.textContent = '直播中'; statusDot.className = 'stream-dot on'; });
   }
 });
 
-// Status polling
-async function checkStatus() {
-  try {
-    const r = await fetch('/api/live/status');
-    const d = await r.json();
-    if (d.online) { statusDot.className='status-dot online'; statusText.textContent='直播中'; }
-    else { statusDot.className='status-dot offline'; statusText.textContent='离线'; }
-  } catch { statusDot.className='status-dot offline'; statusText.textContent='离线'; }
-}
-checkStatus(); setInterval(checkStatus, 5000);
+// Periodic status check (also check if stream is alive)
+setInterval(() => {
+  if (hls && hls.media && !hls.media.paused && hls.media.buffered.length > 0) {
+    const end = hls.media.buffered.end(0);
+    const diff = hls.media.currentTime - end;
+    if (Math.abs(diff) < 3) { statusText.textContent = '直播中'; statusDot.className = 'stream-dot on'; }
+  }
+}, 10000);
+
+// Player controls
+playBtn.onclick = () => {
+  if (video.paused) { video.play(); playBtn.textContent = '⏸'; }
+  else { video.pause(); playBtn.textContent = '▶'; }
+};
+muteBtn.onclick = () => { video.muted = !video.muted; muteBtn.textContent = video.muted ? '🔇' : '🔊'; muteBtn.classList.toggle('muted', video.muted); };
+volumeSlider.oninput = () => { video.volume = volumeSlider.value; video.muted = false; muteBtn.textContent = '🔊'; muteBtn.classList.remove('muted'); };
+video.volume = 0.5;
+video.addEventListener('timeupdate', () => {
+  const cur = formatTime(video.currentTime), dur = formatTime(video.duration || 0);
+  timeDisplay.textContent = cur + ' / ' + dur;
+});
+function formatTime(t) { const m = Math.floor(t/60); const s = Math.floor(t%60); return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
 
 // Chat SSE
 const evtSource = new EventSource('/api/live/chat');
 evtSource.onmessage = (e) => {
-  const d = JSON.parse(e.data);
-  // Chat message
+  try {
+    const d = JSON.parse(e.data);
+    msgCount++;
+    addChatMsg(d.text, d.author || '观众');
+    addDanmaku(d.text);
+    chatCount.textContent = msgCount + ' 条消息';
+  } catch {}
+};
+
+function addChatMsg(text, author) {
   const div = document.createElement('div');
   div.className = 'chat-msg';
-  div.innerHTML = '<span class="chat-author">' + esc(d.author) + '</span>' + esc(d.text);
-  chatMessages.appendChild(div);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-  // Danmaku
-  addDanmaku(d.text);
-};
+  const t = new Date();
+  const time = String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0');
+  div.innerHTML = '<span class="author">' + esc(author) + '</span>' + esc(text) + '<span class="time">' + time + '</span>';
+  chatBody.appendChild(div);
+  chatBody.scrollTop = chatBody.scrollHeight;
+  chatHistory.push({text, author});
+  if (chatHistory.length > 200) chatHistory.shift();
+}
 
 function addDanmaku(text) {
   const el = document.createElement('div');
   el.className = 'danmaku-item';
   el.textContent = text;
-  el.style.top = (10 + Math.random() * 70) + '%';
-  el.style.fontSize = (0.9 + Math.random() * 0.4) + 'rem';
-  danmakuOverlay.appendChild(el);
-  setTimeout(() => el.remove(), 8000);
+  el.style.top = (8 + Math.random() * 72) + '%';
+  el.style.fontSize = (0.85 + Math.random() * 0.35) + 'rem';
+  danmakuLayer.appendChild(el);
+  setTimeout(() => el.remove(), 9500);
 }
 
 function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 
-// Send chat
+// Send
 async function sendChat() {
   const text = chatInput.value.trim();
   if (!text) return;
   chatInput.value = '';
   try {
-    await fetch('/api/live/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text, author:'观众'}) });
+    await fetch('/api/live/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text, author:'我'}) });
+    addChatMsg(text, '我');
     addDanmaku(text);
   } catch {}
 }
