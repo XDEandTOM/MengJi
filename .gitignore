@@ -20,3 +20,4 @@ server-go/*.exe
 *.test
 reasonix.toml
 *_gh_resp.json
+suisui-root.pem
