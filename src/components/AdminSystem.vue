@@ -24,81 +24,6 @@ const showDomainDialog = ref(false)
 const liveStreamUrl = ref("")
 const liveInput = ref("")
 const showLiveDialog = ref(false)
-const certText = ref("")
-const keyText = ref("")
-const savingSSL = ref(false)
-const brotliEnabled = ref(true)
-const githubTokenConfigured = ref(false)
-const githubTokenInput = ref("")
-const showGitHubTokenDialog = ref(false)
-
-async function loadBrotliConfig() {
-  try {
-    const r = await authFetch("/api/admin/config/brotli")
-    if (r.ok) { const d = await r.json(); brotliEnabled.value = d.enabled }
-  } catch { console.warn("loadBrotli failed") }
-}
-
-async function loadGitHubTokenStatus() {
-  try {
-    const r = await authFetch("/api/admin/config/github-token")
-    if (r.ok) { const d = await r.json(); githubTokenConfigured.value = d.configured }
-  } catch { console.warn("loadGitHubToken failed") }
-}
-
-async function saveGitHubToken() {
-  try {
-    await authFetch("/api/admin/config/github-token", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: githubTokenInput.value })
-    })
-    githubTokenConfigured.value = !!githubTokenInput.value
-    showGitHubTokenDialog.value = false
-  } catch { alert("保存失败") }
-}
-
-async function toggleBrotli() {
-  try {
-    await authFetch("/api/admin/config/brotli", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ enabled: brotliEnabled.value })
-    })
-  } catch { console.warn("toggleBrotli failed") }
-}
-
-async function saveSSL() {
-  if (!certText.value || !keyText.value) { alert("请填写证书和私钥内容"); return }
-  savingSSL.value = true
-  try {
-    // Save cert/key as files via backend
-    const fd = new FormData()
-    fd.append("cert", new Blob([certText.value]), "cert.pem")
-    fd.append("key", new Blob([keyText.value]), "key.pem")
-    const res = await authFetch("/api/admin/config/ssl", { method: "POST", body: fd })
-    if (res.ok) {
-      await authFetch("/api/admin/restart", { method: "POST" })
-      alert("配置已保存，服务器正在重启… 请稍等后刷新页面")
-      setTimeout(() => location.reload(), 3000)
-    } else {
-      alert("SSL 配置保存失败")
-    }
-  } catch { alert("SSL 配置失败") }
-  savingSSL.value = false
-}
-
-async function clearSSL() {
-  await authFetch("/api/admin/config/ssl", { method: "DELETE" })
-  await authFetch("/api/admin/restart", { method: "POST" })
-  alert("TLS 已关闭，服务器正在重启…")
-  setTimeout(() => location.reload(), 3000)
-}
-
-async function loadServerConfig() {
-  try {
-    const r = await authFetch("/api/admin/config")
-    if (r.ok) serverConfig.value = await r.json()
-  } catch { console.warn("loadServerConfig failed") }
-}
 
 async function loadSettings() {
   try {
@@ -170,9 +95,6 @@ async function toggleRegister(val: boolean) {
 
 // Load on mount
 loadSettings()
-loadServerConfig()
-loadBrotliConfig()
-loadGitHubTokenStatus()
 </script>
 
 <template>
@@ -259,33 +181,9 @@ loadGitHubTokenStatus()
           <v-chip size="x-small" variant="tonal" :color="serverConfig.tls ? 'success' : 'default'" class="server-badge">
             {{ serverConfig.tls ? 'TLS' : '直连 HTTP' }}
           </v-chip>
-        </div>
-        <div class="d-flex align-center ga-2">
-          <span class="text-body-2" style="min-width:100px">Brotli 压缩</span>
-          <v-switch v-model="brotliEnabled" hide-details density="compact" color="primary" @update:model-value="toggleBrotli" />
-        </div>
-        <v-divider />
-        <span class="text-subtitle-2 font-weight-medium">SSL 证书</span>
-        <v-textarea v-model="certText" variant="outlined" hide-details density="compact" rows="3"
-          placeholder="-----BEGIN CERTIFICATE-----" class="ssl-textarea" />
-        <v-textarea v-model="keyText" variant="outlined" hide-details density="compact" rows="3"
-          placeholder="-----BEGIN PRIVATE KEY-----" class="ssl-textarea" />
-        <div class="d-flex align-center ga-2">
-          <v-btn size="small" variant="flat" color="primary" :loading="savingSSL" @click="saveSSL">保存并重启</v-btn>
-          <v-btn v-if="serverConfig.tls" size="small" variant="tonal" color="error" @click="clearSSL">关闭 TLS</v-btn>
-        </div>
-        <v-divider />
-        <div class="d-flex align-center justify-space-between">
-          <span class="text-body-2">GitHub Token</span>
-          <div class="d-flex align-center ga-2">
-            <v-chip size="x-small" :color="githubTokenConfigured ? 'success' : 'default'" variant="tonal">
-              {{ githubTokenConfigured ? '已配置' : '未配置' }}
-            </v-chip>
-            <v-btn size="small" variant="tonal" color="primary" @click="showGitHubTokenDialog = true">修改</v-btn>
-          </div>
-        </div>
       </div>
-    </v-card>
+    </div>
+</v-card>
 
     <!-- Title Dialog -->
     <v-dialog v-model="showTitleDialog" max-width="400">
@@ -344,27 +242,10 @@ loadGitHubTokenStatus()
         </v-card-actions>
       </v-card>
     </v-dialog>
-    <!-- GitHub Token Dialog -->
-    <v-dialog v-model="showGitHubTokenDialog" max-width="400">
-      <v-card class="rounded-xl pa-4">
-        <v-card-title class="text-subtitle-1 font-weight-medium px-0">GitHub Token</v-card-title>
-        <v-card-text class="px-0">
-          <v-text-field v-model="githubTokenInput" variant="outlined" hide-details density="compact"
-            placeholder="ghp_xxxxxxxxxxxx" autofocus @keyup.enter="saveGitHubToken" />
-          <div class="text-caption text-medium-emphasis mt-2">用于提升 GitHub API 请求频率（60→5000 次/小时）。不会泄露到前端。</div>
-        </v-card-text>
-        <v-card-actions class="px-0">
-          <v-spacer />
-          <v-btn variant="text" @click="showGitHubTokenDialog = false">取消</v-btn>
-          <v-btn variant="tonal" color="primary" @click="saveGitHubToken">保存</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </v-container>
 </template>
 
 <style scoped>
 .stat-card { border-color: #424242 !important; background: rgba(var(--v-theme-surface), 0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 .server-badge { height: 24px !important; font-size: 0.7rem !important; }
-.ssl-textarea :deep(textarea) { font-size: 0.75rem !important; font-family: var(--code-font) !important; }
 </style>
