@@ -60,9 +60,3 @@ func liveStatusHandler(w http.ResponseWriter, r *http.Request) {
 	db.QueryRow("SELECT value FROM settings WHERE key='live_stream_url'").Scan(&url)
 	jsonResp(w, map[string]bool{"online": url != ""})
 }
-
-func handleLive(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Write([]byte(livePage))
-}

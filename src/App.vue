@@ -8,9 +8,11 @@ const AdminPage = defineAsyncComponent(() => import("@/views/AdminPage.vue"))
 import LoginDialog from "@/components/LoginDialog.vue"
 import AppLogo from "@/components/AppLogo.vue"
 import ShareView from "@/components/ShareView.vue"
+import LiveView from "@/components/LiveView.vue"
 import ThemePicker from "@/components/ThemePicker.vue"
 
 const isShareView = computed(() => window.location.pathname.startsWith("/share/"))
+const isLiveView = computed(() => window.location.pathname.startsWith("/live/"))
 
 const { mobile } = useDisplay()
 const isMobile = mobile
@@ -94,6 +96,7 @@ function isImage(val?: string) { return val?.startsWith("/uploads/") || val?.sta
 
 <template>
   <ShareView v-if="isShareView" />
+  <LiveView v-else-if="isLiveView" />
   <v-app v-else>
     <!-- Desktop sidebar -->
     <div v-if="!isMobile" class="sidebar">

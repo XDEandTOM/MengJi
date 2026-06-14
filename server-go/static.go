@@ -3,20 +3,11 @@ package main
 import (
 	"embed"
 	"net/http"
-	"os"
 	"path/filepath"
 )
 
 //go:embed dist/*
 var staticFiles embed.FS
-
-var livePage string
-
-func init() {
-	if data, err := os.ReadFile("live.html"); err == nil {
-		livePage = string(data)
-	}
-}
 
 func handleStatic(w http.ResponseWriter, r *http.Request) {
 	securityHeaders(w)

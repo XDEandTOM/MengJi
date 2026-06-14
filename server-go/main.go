@@ -53,7 +53,6 @@ func main() {
 	mux.HandleFunc("/api/", handleAPI)
 	mux.HandleFunc("/uploads/", handleUploads)
 	mux.HandleFunc("/health", handleHealth)
-	mux.HandleFunc("/live/", handleLive)
 	mux.HandleFunc("/", handleStatic)
 
 	srv := &http.Server{
