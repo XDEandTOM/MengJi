@@ -2,7 +2,6 @@
 import { ref, onMounted, defineAsyncComponent } from "vue"
 import type { Note } from "@/stores/notes"
 import { useNotesStore } from "@/stores/notes"
-import { useAuthStore } from "@/stores/auth"
 import { tagColor } from "@/utils/color"
 import { timeAgo } from "@/utils/time"
 import { displayName } from "@/utils/note"
@@ -16,7 +15,6 @@ const note = ref<Note | null>(null)
 const loading = ref(true)
 const error = ref("")
 const store = useNotesStore()
-const auth = useAuthStore()
 
 const { showEmojiPicker, emojiCategories, activeEmojiCat } = useEmojiPicker()
 
