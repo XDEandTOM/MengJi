@@ -23,9 +23,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Go vet
-        run: cd server-go && go vet ./...
-
       - name: Lint
         run: npm run lint
 
@@ -34,6 +31,9 @@ jobs:
 
       - name: Frontend test
         run: npm run test:run
+
+      - name: Go vet
+        run: cd server-go && go vet ./...
 
       - name: Go test
         run: cd server-go && go test ./... -count=1 -timeout 30s
