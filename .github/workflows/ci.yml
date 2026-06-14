@@ -32,8 +32,11 @@ jobs:
       - name: Frontend test
         run: npm run test:run
 
-      - name: Go test
-        run: cd server-go && go test -v ./... -count=1 -timeout 120s 2>&1
-
       - name: Build
         run: npm run build
+
+      - name: Go vet
+        run: cd server-go && go vet ./... 2>&1
+
+      - name: Go test
+        run: cd server-go && go test -v ./... -count=1 -timeout 120s 2>&1
