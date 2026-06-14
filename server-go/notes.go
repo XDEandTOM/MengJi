@@ -48,10 +48,17 @@ func handleNotes(w http.ResponseWriter, r *http.Request, path string) {
 		limit := 0
 		offset := 0
 		if l := q.Get("limit"); l != "" {
-			fmt.Sscanf(l, "%d", &limit)
+			if n, _ := fmt.Sscanf(l, "%d", &limit); n != 1 || limit < 0 {
+				limit = 0
+			}
+			if limit > 200 {
+				limit = 200
+			}
 		}
 		if o := q.Get("offset"); o != "" {
-			fmt.Sscanf(o, "%d", &offset)
+			if n, _ := fmt.Sscanf(o, "%d", &offset); n != 1 || offset < 0 {
+				offset = 0
+			}
 		}
 
 		params := map[string]string{
@@ -556,6 +563,7 @@ func handleNotesImport(w http.ResponseWriter, r *http.Request) {
 		errResp(w, "unauthorized", 401)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 	var notes []struct {
 		Id        string   `json:"id"`
 		Content   string   `json:"content"`

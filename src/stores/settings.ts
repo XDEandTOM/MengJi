@@ -34,15 +34,5 @@ export const useSettingsStore = defineStore("settings", () => {
     } catch (e) { console.warn("save settings failed", e); return false }
   }
 
-  function applyTitle() {
-    document.title = siteTitle.value || "碎碎"
-    if (siteFavicon.value) {
-      const link = document.querySelector("link[rel=\"icon\"]") || document.createElement("link")
-      link.setAttribute("rel", "icon")
-      link.setAttribute("href", siteFavicon.value)
-      document.head.appendChild(link)
-    }
-  }
-
-  return { siteTitle, siteIcp, allowRegister, siteFavicon, load, save, applyTitle }
+  return { siteTitle, siteIcp, allowRegister, siteFavicon, load, save }
 })

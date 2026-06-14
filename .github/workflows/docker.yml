@@ -14,9 +14,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: "npm"
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build frontend
         run: npm run build
@@ -47,3 +48,5 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/suisui:latest
             ${{ secrets.DOCKER_USERNAME }}/suisui:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -32,7 +32,9 @@ const userRole = ref("user")
     if (storedAuth === "true" && storedUser) {
       try {
         const token = localStorage.getItem(TOKEN_KEY) || ""
-        const res = await fetch(`${API}/auth/verify?username=${encodeURIComponent(storedUser)}&token=${encodeURIComponent(token)}`)
+        const res = await fetch(`${API}/auth/verify?username=${encodeURIComponent(storedUser)}`, {
+          headers: { "Authorization": "Bearer " + token }
+        })
         const data = await res.json()
         if (data.valid) {
           isLoggedIn.value = true
@@ -43,8 +45,8 @@ const userRole = ref("user")
       userThemeColor.value = data.theme_color || "#1976D2"
           localStorage.setItem(AVATAR_KEY, data.avatar || "")
           localStorage.setItem(NICK_KEY, data.nickname || "")
-          localStorage.setItem(TOKEN_KEY, data.token || "")
-          userToken.value = data.token || ""
+          localStorage.setItem(TOKEN_KEY, token)
+          userToken.value = token
           localStorage.setItem("suisui-role", data.role || "user")
           localStorage.setItem("suisui-color", data.theme_color || "#1976D2")
         } else {

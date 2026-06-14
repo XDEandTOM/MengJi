@@ -23,7 +23,6 @@ type authVerifyResponse struct {
 	Nickname  string `json:"nickname,omitempty"`
 	Role      string `json:"role,omitempty"`
 	ThemeColor string `json:"theme_color,omitempty"`
-	Token     string `json:"token,omitempty"`
 }
 
 type authSuccessResponse struct {

@@ -8,6 +8,8 @@ import NoteCard from "@/components/NoteCard.vue"
 import Heatmap from "@/components/Heatmap.vue"
 import InlineEditor from "@/components/InlineEditor.vue"
 import SidePanel from "@/components/SidePanel.vue"
+import ZoomOverlay from "@/components/ZoomOverlay.vue"
+import TrashDialog from "@/components/TrashDialog.vue"
 
 defineProps<{ mobileHeatmap: boolean }>()
 const emit = defineEmits<{ "close-heatmap": [] }>()
@@ -40,13 +42,11 @@ const showShortcuts = ref(false)
 
 const zoomedUpload = ref("")
 const showTrash = ref(false)
-const deletedNotes = ref<Note[]>([])
 const editorRef = ref<InstanceType<typeof InlineEditor> | null>(null)
 const newNotesCount = ref(0)
 let lastActionAt = 0
 let pollingTimer: ReturnType<typeof setInterval> | null = null
 
-watch(showTrash, v => { if (v) fetchDeletedNotes() })
 
 function onNoteSubmitted() {
   lastActionAt = Date.now()
@@ -158,25 +158,6 @@ async function fetchVersion() {
   } catch { versionText.value = "" }
 }
 
-
-async function fetchDeletedNotes() {
-  try {
-    const res = await authFetch(`/api/notes/trash?username=${auth.userName}`)
-    if (res.ok) { deletedNotes.value = await res.json() }
-  } catch { console.warn("deletedNotes fetch failed") }
-}
-async function restoreNote(id: string) {
-  try {
-    const res = await authFetch(`/api/notes/${id}/restore?username=${auth.userName}`,{method:"PATCH"})
-    if (res.ok) { deletedNotes.value = deletedNotes.value.filter(n=>n.id!==id); await store.fetchNotes(true) }
-  } catch { console.warn("restoreNote failed") }
-}
-async function deleteForever(id: string) {
-  try {
-    const res = await authFetch(`/api/notes/${id}/hard-delete?username=${auth.userName}`,{method:"DELETE"})
-    if (res.ok) { deletedNotes.value = deletedNotes.value.filter(n => n.id !== id) }
-  } catch { console.warn("deleteForever failed") }
-}
 
 function handleEdit(memo: Note) {
   editorRef.value?.handleEdit(memo)
@@ -299,29 +280,7 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
         </v-card>
       </v-dialog>
 
-      <v-dialog v-model="showTrash" max-width="500" scrollable>
-        <v-card class="rounded-xl pa-4">
-          <div class="d-flex align-center mb-3">
-            <span class="text-subtitle-2 font-weight-medium">回收站</span>
-            <v-spacer />
-            <v-btn icon="mdi-close" size="x-small" variant="text" @click="showTrash = false" />
-          </div>
-          <div v-if="!deletedNotes.length" class="d-flex flex-column align-center py-4 text-medium-emphasis">
-            <v-icon size="32" class="mb-2" color="rgba(var(--v-theme-on-surface),0.15)">mdi-delete-outline</v-icon>
-            <span class="text-caption">回收站为空</span>
-          </div>
-          <div v-else class="d-flex flex-column ga-2">
-            <div v-for="note in deletedNotes" :key="note.id" class="d-flex align-center ga-2 pa-2"
-              style="border-bottom:1px solid rgba(var(--v-theme-on-surface),0.06)">
-              <div class="flex-grow-1 text-caption" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                {{ note.content?.replace(/!\[.*?\]\(.+?\)/g, "[图片]").substring(0, 60) }}
-              </div>
-              <v-btn icon="mdi-restore" size="x-small" variant="text" color="primary" title="恢复" @click="restoreNote(note.id)" />
-              <v-btn icon="mdi-delete-forever" size="x-small" variant="text" color="error" title="永久删除" @click="deleteForever(note.id)" />
-            </div>
-          </div>
-        </v-card>
-      </v-dialog>
+      <TrashDialog v-model="showTrash" />
 
       <InlineEditor ref="editorRef" @submitted="onNoteSubmitted" @open-trash="showTrash = true" />
       <div v-if="!store.loaded" class="d-flex flex-column ga-3 px-1">
@@ -414,14 +373,7 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
     </div>
   </div>
 
-  <teleport to="body">
-    <div v-if="zoomedUpload" class="zoom-overlay" @click="zoomedUpload = ''">
-      <button class="zoom-close-btn" @click.stop="zoomedUpload = ''">
-        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-      </button>
-      <img :src="zoomedUpload" class="zoom-img" @click.stop />
-    </div>
-  </teleport>
+  <ZoomOverlay v-if="zoomedUpload" :url="zoomedUpload" @close="zoomedUpload = ''" />
 
   <!-- Keyboard shortcuts dialog -->
   <v-dialog v-model="showShortcuts" max-width="360">
@@ -459,11 +411,6 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
 .icp-link:hover { text-decoration: underline; }
 
 .inline-editor { width: 100%; }
-.tool-sep-sm {
-  width: 1px; height: 16px;
-  background: rgba(var(--v-theme-on-surface), 0.08);
-  flex-shrink: 0;
-}
 .empty-state {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 56px 16px; gap: 12px;
@@ -625,18 +572,4 @@ async function movePinnedNote(note: Note, dir: "up" | "down") {
 </style>
 
 <style>
-.zoom-overlay {
-  position: fixed; inset: 0; z-index: 9999;
-  background: rgba(0,0,0,0.8);
-  display: flex; align-items: center; justify-content: center;
-  cursor: zoom-out;
-}
-.zoom-img { max-width: 90vw; max-height: 90vh; border-radius: 8px; object-fit: contain; cursor: default; }
-.zoom-close-btn {
-  position: fixed; top: 16px; right: 16px; width: 36px; height: 36px; border-radius: 50%;
-  border: none; background: rgba(255,255,255,0.15); color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: background 0.2s; z-index: 10000;
-}
-.zoom-close-btn:hover { background: rgba(255,255,255,0.3); }
 </style>

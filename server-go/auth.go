@@ -41,10 +41,15 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 				errResp(w, "用户名或密码错误", 401)
 				return
 			}
-			// Upgrade to new hash
-			newHash := hashPassword(body.Password, salt)
-			execSQLLog("UPDATE users SET password=? WHERE username=?", newHash, body.Username)
-			log.Printf("upgraded password hash for user %s", body.Username)
+			// Upgrade SHA256 → versioned HMAC
+			newSalt, newHash := upgradePasswordHash(body.Password, storedPwd)
+			execSQLLog("UPDATE users SET password=?, salt=? WHERE username=?", newHash, newSalt, body.Username)
+			log.Printf("upgraded password hash (sha256→v1) for user %s", body.Username)
+		} else if !strings.HasPrefix(storedPwd, "$") {
+			// Upgrade legacy HMAC → versioned HMAC with higher iterations
+			newSalt, newHash := upgradePasswordHash(body.Password, storedPwd)
+			execSQLLog("UPDATE users SET password=?, salt=? WHERE username=?", newHash, newSalt, body.Username)
+			log.Printf("upgraded password hash (v0→v1) for user %s", body.Username)
 		}
 		var avatar, nickname string
 		var themeColor string
@@ -93,7 +98,6 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 
 	case path == "/auth/verify" && r.Method == "GET":
 		username := r.URL.Query().Get("username")
-		token := r.URL.Query().Get("token")
 		tokenUser, tokenValid := verifyToken(r)
 		if !tokenValid || tokenUser != username {
 			jsonResp(w, authVerifyResponse{Valid: false})
@@ -105,14 +109,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 			jsonResp(w, authVerifyResponse{Valid: false})
 			return
 		}
-		var dbToken string
-		if err := db.QueryRow("SELECT token FROM auth_tokens WHERE username=? ORDER BY created_at DESC LIMIT 1", username).Scan(&dbToken); err != nil {
-			dbToken = token
-		}
-		if dbToken == "" {
-			dbToken = token
-		}
-		jsonResp(w, authVerifyResponse{Valid: true, Avatar: avatar, Nickname: nickname, Role: role, ThemeColor: themeColor, Token: dbToken})
+		jsonResp(w, authVerifyResponse{Valid: true, Avatar: avatar, Nickname: nickname, Role: role, ThemeColor: themeColor})
 
 	case path == "/auth/avatar" && r.Method == "PATCH":
 		var body struct{ Username, Avatar string }
@@ -214,6 +211,10 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 			errResp(w, "密码验证失败", 401)
 			return
 		}
+		if len(body.NewPassword) < 4 {
+			errResp(w, "新密码至少4个字符", 400)
+			return
+		}
 		newSalt := generateSalt()
 		if _, err := db.Exec("UPDATE users SET password=?, salt=? WHERE username=?", hashPassword(body.NewPassword, newSalt), newSalt, body.Username); err != nil {
 			errResp(w, "密码修改失败", 500)
@@ -222,17 +223,17 @@ func handleAuth(w http.ResponseWriter, r *http.Request, path string) {
 		jsonResp(w, successResponse{Success: "ok"})
 
 	case path == "/auth/avatar/upload" && r.Method == "POST":
+		_, tokenValid := verifyToken(r)
+		if !tokenValid {
+			errResp(w, "unauthorized", 401)
+			return
+		}
 		r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 		if err := r.ParseMultipartForm(10 << 20); err != nil {
 			errResp(w, "文件过大，最大 10MB", 400)
 			return
 		}
 		defer r.MultipartForm.RemoveAll()
-		_, tokenValid := verifyToken(r)
-		if !tokenValid {
-			errResp(w, "unauthorized", 401)
-			return
-		}
 		file, header, err := r.FormFile("avatar")
 		if err != nil {
 			errResp(w, "文件读取失败", 400)

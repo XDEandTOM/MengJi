@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, nextTick, watch } from "vue"
+import { ref, computed, nextTick, watch, onBeforeUnmount } from "vue"
 import { useNotesStore } from "@/stores/notes"
 import { useAuthStore } from "@/stores/auth"
 import { authFetch } from "@/utils/api"
+import ZoomOverlay from "@/components/ZoomOverlay.vue"
 
 const store = useNotesStore()
 const auth = useAuthStore()
@@ -52,6 +53,7 @@ watch([inlineContent, inlineTagsInput, uploadedImages, editingNoteId], () => {
   if (draftTimer) clearTimeout(draftTimer)
   draftTimer = setTimeout(saveDraft, 500)
 }, { deep: true })
+onBeforeUnmount(() => { if (draftTimer) clearTimeout(draftTimer) })
 
 function insertMd(b: string, f: string, fb: string) {
   const el = inlineTextarea.value
@@ -212,12 +214,7 @@ defineExpose({ handleEdit })
       <v-icon size="x-small" color="warning">mdi-content-save</v-icon><span>草稿已自动保存</span>
     </div>
   </div>
-  <teleport to="body">
-    <div v-if="zoomedUpload" class="zoom-overlay" @click="zoomedUpload = ''">
-      <button class="zoom-close-btn" @click.stop="zoomedUpload = ''"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
-      <img :src="zoomedUpload" class="zoom-img" @click.stop />
-    </div>
-  </teleport>
+  <ZoomOverlay v-if="zoomedUpload" :url="zoomedUpload" @close="zoomedUpload = ''" />
 </template>
 
 <style scoped>
@@ -255,14 +252,7 @@ defineExpose({ handleEdit })
 .uploaded-img-wrap { position: relative; display: inline-block; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(var(--v-theme-on-surface), 0.08); flex-shrink: 0; }
 .img-close-btn { position: absolute; top: -4px; right: -4px; background: rgb(var(--v-theme-surface)); border-radius: 50%; }
 .tool-sep { width: 1px; height: 20px; background: rgba(var(--v-theme-on-surface), 0.1); flex-shrink: 0; display: inline-block; vertical-align: middle; }
-.tool-sep-sm { width: 1px; height: 16px; background: rgba(var(--v-theme-on-surface), 0.08); flex-shrink: 0; }
 @media (max-width: 768px) { .inline-textarea { min-height: 60px; padding: 12px 14px 8px; font-size: 0.9rem; } .editor-toolbar .tool-btn { width: 28px; height: 28px; } }
 </style>
 <style>
-.zoom-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; cursor: zoom-out; animation: zoomFadeIn 0.25s ease; }
-.zoom-img { max-width: 90vw; max-height: 90vh; border-radius: 8px; object-fit: contain; cursor: default; }
-.zoom-close-btn { position: fixed; top: 16px; right: 16px; width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(255,255,255,0.15); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s; z-index: 10000; }
-.zoom-close-btn:hover { background: rgba(255,255,255,0.3); }
-.zoom-img-wrap { display: flex; align-items: center; justify-content: center; }
-@keyframes zoomFadeIn { from { opacity: 0 } to { opacity: 1 } }
 </style>

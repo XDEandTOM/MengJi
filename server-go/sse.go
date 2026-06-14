@@ -48,8 +48,10 @@ func sseHandler(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		<-notify
 		sseMu.Lock()
-		delete(sseClients, ch)
-		close(ch)
+		if _, ok := sseClients[ch]; ok {
+			delete(sseClients, ch)
+			close(ch)
+		}
 		sseMu.Unlock()
 	}()
 

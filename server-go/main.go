@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"io"
 	"log"
 	"net/http"
@@ -32,6 +33,7 @@ func main() {
 	if port == "" {
 		port = "3742"
 	}
+	githubToken = os.Getenv("GITHUB_TOKEN")
 	dataDir = "."
 
 	for i := 1; i < len(os.Args); i++ {
@@ -46,6 +48,8 @@ func main() {
 	initDB()
 	initAdmin()
 
+	go startLoginRateLimitCleanup()
+
 	serverPort = port
 
 
@@ -59,7 +63,7 @@ func main() {
 		Addr:         ":" + port,
 		Handler:      loggingMiddleware(mux),
 		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		WriteTimeout: 0,
 		IdleTimeout:  60 * time.Second,
 	}
 
@@ -74,6 +78,12 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Println("Shutting down server...")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("shutdown error: %v", err)
+	}
+	log.Println("Server stopped")
 }
 
 
@@ -119,24 +129,14 @@ func handleAPI(w http.ResponseWriter, r *http.Request) {
 		handleNotes(w, r, path)
 	case strings.HasPrefix(path, "/share/"):
 		handleShareView(w, r)
+	case path == "/live/config":
+		var url string
+		db.QueryRow("SELECT value FROM settings WHERE key='live_stream_url'").Scan(&url)
+		jsonResp(w, map[string]string{"streamUrl": url})
 	case strings.HasPrefix(path, "/settings"):
 		handleSettings(w, r)
 	case strings.HasPrefix(path, "/events"):
 		sseHandler(w, r)
-	case strings.HasPrefix(path, "/live/chat"):
-		liveChatHandler(w, r)
-	case strings.HasPrefix(path, "/live/config"):
-		var url string
-		db.QueryRow("SELECT value FROM settings WHERE key='live_stream_url'").Scan(&url)
-		jsonResp(w, map[string]string{"streamUrl": url})
-	case strings.HasPrefix(path, "/live/status"):
-		liveStatusHandler(w, r)
-	case strings.HasPrefix(path, "/live/dm"):
-		if r.Method == "GET" {
-			jsonResp(w, map[string]interface{}{"code": 0, "data": []interface{}{}})
-		} else {
-			jsonResp(w, map[string]interface{}{"code": 0})
-		}
 	case path == "/admin/config":
 		jsonResp(w, map[string]interface{}{
 			"version": Version,

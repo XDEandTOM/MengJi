@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Heatmap from "./Heatmap.vue"
+import { tagColor } from "@/utils/color"
 
 defineProps<{
   search: string
@@ -15,12 +16,6 @@ const emit = defineEmits<{
   "update:selectedDay": [v: string]
   "scroll-to-note": [id: string]
 }>()
-
-const TAG_COLORS = ["primary", "teal", "orange", "pink", "indigo", "cyan", "deep-purple", "amber"]
-function tagColor(tag: string) {
-  let h = 0; for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) | 0
-  return TAG_COLORS[Math.abs(h) % TAG_COLORS.length]
-}
 
 function openGithub() {
   window.open("https://github.com/Linraintong/SuiSui", "_blank")

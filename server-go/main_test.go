@@ -247,9 +247,12 @@ func TestNotesPagination(t *testing.T) {
 	w2 := httptest.NewRecorder()
 	handleAPI(w2, req)
 
-	var notes []noteResponse
-	json.Unmarshal(w2.Body.Bytes(), &notes)
-	if len(notes) != 1 {
-		t.Fatalf("expected 1 note with limit=1, got %d", len(notes))
+	var pResp paginatedNotesResponse
+	json.Unmarshal(w2.Body.Bytes(), &pResp)
+	if len(pResp.Notes) != 1 {
+		t.Fatalf("expected 1 note with limit=1, got %d", len(pResp.Notes))
+	}
+	if pResp.Total < 3 {
+		t.Fatalf("expected total>=3, got %d", pResp.Total)
 	}
 }

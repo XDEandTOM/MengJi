@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, defineAsyncComponent } from "vue"
+import { ref, onMounted, defineAsyncComponent } from "vue"
 import type { Note } from "@/stores/notes"
 import { useNotesStore } from "@/stores/notes"
 import { useAuthStore } from "@/stores/auth"
+import { tagColor } from "@/utils/color"
+import { timeAgo } from "@/utils/time"
+import { displayName } from "@/utils/note"
+import { isImage } from "@/utils/url"
+import { getReactionUserId } from "@/utils/auth"
+import { useEmojiPicker } from "@/utils/useEmojiPicker"
 const MarkdownPreview = defineAsyncComponent(() => import("./MarkdownPreview.vue"))
 import AppLogo from "./AppLogo.vue"
 
@@ -12,30 +18,7 @@ const error = ref("")
 const store = useNotesStore()
 const auth = useAuthStore()
 
-const showEmojiPicker = ref(false)
-const emojiCategories = ref<{ id: number; icon: string; list: string[] }[]>([])
-const groupLabels: Record<number, string> = { 0: "😊", 1: "🤝", 3: "🐻", 4: "🍔", 5: "🏠", 6: "⚽", 7: "💡", 8: "❤️", 9: "🚩" }
-const activeEmojiCat = ref(0)
-
-async function loadEmojiData() {
-  if (emojiCategories.value.length) return
-  const raw = (await import("emojibase-data/zh/compact.json")).default
-  const cats = [0,1,3,4,5,6,7,8,9].map(g => ({ id: g, icon: groupLabels[g] || "?", list: [] as string[] }))
-  for (const e of raw) {
-    if (e.group === undefined || e.group === 2) continue
-    const cat = cats.find(c => c.id === e.group)
-    if (cat && e.unicode) cat.list.push(e.unicode)
-  }
-  emojiCategories.value = cats
-}
-
-watch(showEmojiPicker, (v) => { if (v) loadEmojiData() })
-
-const TAG_COLORS = ["primary", "teal", "orange", "pink", "indigo", "cyan", "deep-purple", "amber"]
-function tagColor(tag: string) {
-  let h = 0; for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) | 0
-  return TAG_COLORS[Math.abs(h) % TAG_COLORS.length]
-}
+const { showEmojiPicker, emojiCategories, activeEmojiCat } = useEmojiPicker()
 
 async function loadSharedNote() {
   const token = window.location.pathname.replace("/share/", "")
@@ -63,39 +46,6 @@ async function loadSharedNote() {
 }
 
 onMounted(loadSharedNote)
-
-function timeAgo(ts: number) {
-  const diff = Date.now() - ts
-  const seconds = Math.floor(diff / 1000)
-  if (seconds < 60) return "刚刚"
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}分钟前`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}小时前`
-  const d = new Date(ts)
-  const pad = (n: number) => String(n).padStart(2, "0")
-  const dateStr = `${d.getMonth() + 1}月${pad(d.getDate())}日`
-  const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`
-  const year = d.getFullYear()
-  const nowYear = new Date().getFullYear()
-  if (year !== nowYear) return `${year}年${dateStr} ${timeStr}`
-  return `${dateStr} ${timeStr}`
-}
-
-function displayName(memo: Note) {
-  return memo.nickname?.trim() || memo.username || "匿名"
-}
-
-function isImage(val?: string) {
-  return val?.startsWith("/uploads/") || val?.startsWith("http")
-}
-
-function getReactionUserId() {
-  if (auth.isLoggedIn && auth.userName) return auth.userName
-  let gid = localStorage.getItem("suisui-guest")
-  if (!gid) { gid = "guest_" + Date.now().toString(36) + Math.random().toString(36).slice(2,6); localStorage.setItem("suisui-guest", gid) }
-  return gid
-}
 
 function hasReacted(emoji: string) {
   return note.value?.reactions?.[emoji]?.includes(getReactionUserId())

@@ -2,6 +2,7 @@
 import { ref, onMounted, watch, computed, defineAsyncComponent } from "vue"
 import { useDisplay, useTheme } from "vuetify"
 import { useAuthStore } from "@/stores/auth"
+import { isImage } from "@/utils/url"
 
 const NotesPage = defineAsyncComponent(() => import("@/views/NotesPage.vue"))
 const AdminPage = defineAsyncComponent(() => import("@/views/AdminPage.vue"))
@@ -90,8 +91,6 @@ watch(() => vuetifyTheme.global.name.value, (val) => {
 watch([() => auth.isLoggedIn, () => auth.userRole], () => {
   if (!auth.isLoggedIn || auth.userRole !== "admin") showAdmin.value = false
 })
-
-function isImage(val?: string) { return val?.startsWith("/uploads/") || val?.startsWith("http") }
 </script>
 
 <template>

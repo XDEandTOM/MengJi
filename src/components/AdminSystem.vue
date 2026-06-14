@@ -38,6 +38,13 @@ async function loadSettings() {
       allowRegister.value = s.allow_register !== "false"
     }
   } catch { console.warn("loadSettings failed") }
+  try {
+    const r = await authFetch(API + "/admin/config")
+    if (r.ok) {
+      const c = await r.json()
+      serverConfig.value = { version: c.version || "", port: c.port || "", tls: false, dataDir: c.dataDir || "" }
+    }
+  } catch { /* server config not critical */ }
 }
 
 function openTitleDialog() { titleInput.value = siteTitle.value; showTitleDialog.value = true }
@@ -143,17 +150,6 @@ loadSettings()
         <v-divider />
         <div class="d-flex align-center justify-space-between">
           <div class="d-flex align-center ga-3">
-            <v-icon color="primary">mdi-video</v-icon>
-            <span class="text-body-2">直播流地址</span>
-          </div>
-          <div class="d-flex align-center ga-2">
-            <span class="text-body-2 text-medium-emphasis text-caption" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ liveStreamUrl || "未设置" }}</span>
-            <v-btn size="small" variant="tonal" color="primary" @click="liveInput = liveStreamUrl; showLiveDialog = true">修改</v-btn>
-          </div>
-        </div>
-        <v-divider />
-        <div class="d-flex align-center justify-space-between">
-          <div class="d-flex align-center ga-3">
             <v-icon color="primary">mdi-application</v-icon>
             <span class="text-body-2">图标</span>
           </div>
@@ -166,6 +162,17 @@ loadSettings()
             <span class="text-body-2">Favicon</span>
           </div>
           <v-btn size="small" variant="tonal" color="primary" @click="showFaviconPicker = true">修改</v-btn>
+        </div>
+        <v-divider />
+        <div class="d-flex align-center justify-space-between">
+          <div class="d-flex align-center ga-3">
+            <v-icon color="primary">mdi-video</v-icon>
+            <span class="text-body-2">直播流地址</span>
+          </div>
+          <div class="d-flex align-center ga-2">
+            <span class="text-body-2 text-medium-emphasis text-caption" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ liveStreamUrl || "未设置" }}</span>
+            <v-btn size="small" variant="tonal" color="primary" @click="liveInput = liveStreamUrl; showLiveDialog = true">修改</v-btn>
+          </div>
         </div>
       </div>
     </v-card>

@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/crypto/argon2"
 	_ "modernc.org/sqlite"
 )
 
@@ -52,6 +53,24 @@ func resetLoginRateLimit(ip string) {
 	loginMu.Lock()
 	delete(loginAttempts, ip)
 	loginMu.Unlock()
+}
+
+// startLoginRateLimitCleanup runs a background goroutine that periodically
+// purges expired login rate-limit entries to prevent unbounded map growth.
+func startLoginRateLimitCleanup() {
+	go func() {
+		for {
+			time.Sleep(5 * time.Minute)
+			loginMu.Lock()
+			now := time.Now()
+			for ip, entry := range loginAttempts {
+				if now.Sub(entry.lastTime) > 1*time.Minute {
+					delete(loginAttempts, ip)
+				}
+			}
+			loginMu.Unlock()
+		}
+	}()
 }
 
 var db *sql.DB
@@ -158,20 +177,38 @@ func initAdmin() {
 	}
 }
 
+const (
+	// Current password hash version.
+	// $1$salt$hash = HMAC-SHA256 × 200,000 (fallback, still accepted on verify)
+	// $2$salt$hash = Argon2id (current, used for new registrations and upgrades)
+	passwordHashVersion = "2"
+	// Argon2id parameters
+	argonTime    = 3
+	argonMemory  = 64 * 1024 // 64 MB
+	argonThreads = 4
+	argonKeyLen  = 32
+	// Fallback HMAC iteration count for version 1 hashes
+	hashIterations = 200000
+	legacyHashIterations = 10000
+)
+
 func generateSalt() string {
 	b := make([]byte, 16)
 	rand.Read(b)
 	return hex.EncodeToString(b)
 }
 
-const hashIterations = 10000
-
 func hashPassword(pwd, salt string) string {
+	hash := argon2.IDKey([]byte(pwd), []byte(salt), argonTime, argonMemory, argonThreads, argonKeyLen)
+	return "$2$" + salt + "$" + hex.EncodeToString(hash)
+}
+
+func hashHMAC(pwd, salt string, iterations int) string {
 	key := []byte(salt)
 	mac := hmac.New(sha256.New, key)
 	mac.Write([]byte(pwd))
 	b := mac.Sum(nil)
-	for i := 0; i < hashIterations; i++ {
+	for i := 0; i < iterations; i++ {
 		mac.Reset()
 		mac.Write(b)
 		b = mac.Sum(nil)
@@ -186,7 +223,38 @@ func legacyHashPassword(pwd, salt string) string {
 }
 
 func checkPassword(input, stored, salt string) bool {
-	return hashPassword(input, salt) == stored
+	if !strings.HasPrefix(stored, "$") {
+		// Legacy: plain hex — HMAC with 10,000 iterations
+		return hashHMAC(input, salt, legacyHashIterations) == stored
+	}
+	parts := strings.SplitN(stored, "$", 4)
+	if len(parts) < 4 {
+		return false
+	}
+	switch parts[1] {
+	case "1":
+		// Version 1: HMAC-SHA256 × 200,000
+		return hashHMAC(input, parts[2], hashIterations) == parts[3]
+	case "2":
+		// Version 2: Argon2id
+		hash, err := hex.DecodeString(parts[3])
+		if err != nil || len(hash) != argonKeyLen {
+			return false
+		}
+		expected := argon2.IDKey([]byte(input), []byte(parts[2]), argonTime, argonMemory, argonThreads, argonKeyLen)
+		return hmac.Equal(hash, expected)
+	}
+	return false
+}
+
+func upgradePasswordHash(pwd, storedHash string) (string, string) {
+	// If already at latest version, no upgrade needed
+	if strings.HasPrefix(storedHash, "$2$") {
+		return "", ""
+	}
+	// Legacy or version 1: generate new salt and re-hash with Argon2id
+	salt := generateSalt()
+	return salt, hashPassword(pwd, salt)
 }
 
 func generateToken() string {
@@ -196,12 +264,9 @@ func generateToken() string {
 }
 
 func verifyToken(r *http.Request) (string, bool) {
-	token := r.URL.Query().Get("token")
-	if token == "" {
-		token = r.Header.Get("Authorization")
-		if strings.HasPrefix(token, "Bearer ") {
-			token = token[7:]
-		}
+	token := r.Header.Get("Authorization")
+	if strings.HasPrefix(token, "Bearer ") {
+		token = token[7:]
 	}
 	if token == "" {
 		return "", false
